@@ -2,6 +2,20 @@
 
 > **CountriesDashboardService** is a...
 
+## Table of Contents
+
+- [Features](#features)
+  - [External APIs](#external-apis)
+  - [Error Handling](#error-handling)
+  - [Known issues](#known-issues)
+- [Requirements](#requirements)
+- [Setup](#setup)
+- [API Endpoints](#api-endpoints)
+  - [Endpoint 'Registrations': Registering dashboard configuration](#endpoint-registrations-registering-dashboard-configuration)
+  - [/dashboard/v1/dashboards/](#dashboardv1dashboards)
+  - [/dashboard/v1/notifications/](#dashboardv1notifications)
+  - [/dashboard/v1/status/](#dashboardv1status)
+  
 ## Features
 
 ### External APIs
@@ -73,7 +87,7 @@ Manages the registration of new dashboard configurations that indicate which inf
 
 ##### - Request (POST)
 
-```http
+```
 Method: POST
 Path: /dashboard/v1/registrations/
 Content type: application/json
@@ -121,7 +135,7 @@ Enables retrieval of a specific registered dashboard configuration.
 
 The following shows a request for an individual configuration identified by its ID.
 
-```http
+```
 Method: GET
 Path: /dashboard/v1/registrations/{id}
 ```
@@ -163,7 +177,7 @@ Enables retrieval of all registered dashboard configurations.
 
 A GET request to the endpoint should return all registered configurations including IDs and timestamps of last change.
 
-```http
+```
 Method: GET
 Path: /dashboard/v1/registrations/
 ```
@@ -223,7 +237,7 @@ Enables the replacing of specific registered dashboard configurations.
 
 The following shows a request for an updated of individual configuration identified by its ID. This update should lead to an update of the configuration and an update of the associated timestamp (lastChange).
 
-```http
+```
 Method: PUT
 Path: /dashboard/v1/registrations/{id}
 ```
@@ -269,7 +283,7 @@ Enabling the deletion of a specific registered dashboard configuration.
 
 The following shows a request for deletion of an individual configuration identified by its ID. This update should lead to a deletion of the configuration on the server.
 
-```http
+```
 Method: DELETE
 Path: /dashboard/v1/registrations/{id}
 ```
@@ -290,5 +304,3 @@ This is the response to the delete request.
 ### /dashboard/v1/notifications/
 
 ### /dashboard/v1/status/
-
-
