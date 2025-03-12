@@ -6,6 +6,8 @@ import (
 )
 
 func main() {
+	log.Println("Starting server...")
+
 	// Start the server
 	router := http.NewServeMux()
 	port := "8080"
