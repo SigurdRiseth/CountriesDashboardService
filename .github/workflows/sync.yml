@@ -1,0 +1,26 @@
+name: Sync GitHub to GitLab
+
+on:
+  push:
+    branches:
+      - '**'  # Matches any branch
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Push to GitLab
+        env:
+          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+        run: |
+          git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.gvk.idi.ntnu.no/course/prog2005/prog2005-2025-workspace/sigurdriseth/assignment-2.git
+          git fetch --unshallow
+          git push --force gitlab HEAD  # Push only the branch that triggered the action
