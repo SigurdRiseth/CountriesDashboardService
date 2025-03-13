@@ -15,6 +15,7 @@
   - [/dashboard/v1/dashboards/](#dashboardv1dashboards)
   - [/dashboard/v1/notifications/](#dashboardv1notifications)
   - [/dashboard/v1/status/](#dashboardv1status)
+- [Contributors](#contributors)
   
 ## Features
 
@@ -304,3 +305,12 @@ This is the response to the delete request.
 ### /dashboard/v1/notifications/
 
 ### /dashboard/v1/status/
+
+## Contributors
+
+This project was developed by:
+
+- [**Sigurd Riseth**](https://github.com/SigurdRiseth)
+  - Implemented...
+- [**Theodor Sjetnan Utvik**](https://github.com/TheodorUtvik)
+  - Developed...
