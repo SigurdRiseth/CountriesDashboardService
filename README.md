@@ -1,6 +1,8 @@
 # Countries Dashboard Service
 
-> **CountriesDashboardService** is a...
+This project is a **RESTful web application** developed in **Golang** that allows users to configure and retrieve dynamic information dashboards. These dashboards are populated using real-time data from external APIs and are stored persistently to survive service restarts. Additionally, the application includes a simple **notification service** that listens for specific events using webhooks.
+
+The project is part of a group assignment where we will implement state management using databases, utilize webhooks for event notifications, and deploy the service using **Docker** and an **Infrastructure-as-a-Service (IaaS) system**.
 
 ## Table of Contents
 
@@ -10,6 +12,7 @@
   - [Known issues](#known-issues)
 - [Requirements](#requirements)
 - [Setup](#setup)
+- [Deployment](#deployment)
 - [API Endpoints](#api-endpoints)
   - [Endpoint 'Registrations': Registering dashboard configuration](#endpoint-registrations-registering-dashboard-configuration)
   - [/dashboard/v1/dashboards/](#dashboardv1dashboards)
@@ -75,6 +78,10 @@ The services used in this application are:
  ```
 
 5.	The service should now be running at http://localhost:8080/.
+
+## Deployment
+
+The application will be initially developed and tested locally, followed by deployment on an OpenStack instance (SkyHigh). Instructions for running and deploying the service will be provided in the setup guide.
 
 ## API Endpoints
 
