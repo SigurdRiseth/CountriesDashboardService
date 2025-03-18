@@ -24,4 +24,13 @@ go.work.sum
 # env file
 .env
 
+# IDE files
 .idea/
+
+# Firebase Admin SDK
+firebase-adminsdk.json
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
