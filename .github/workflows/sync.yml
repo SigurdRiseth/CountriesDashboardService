@@ -11,6 +11,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Ensures full history is available
 
       - name: Configure Git
         run: |
@@ -22,5 +24,5 @@ jobs:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
         run: |
           git remote add gitlab https://oauth2:$GITLAB_TOKEN@git.gvk.idi.ntnu.no/course/prog2005/prog2005-2025-workspace/sigurdriseth/assignment-2.git
-          git fetch --unshallow
-          git push --force gitlab HEAD  # Push only the branch that triggered the action
+          git fetch --unshallow || true  # Avoid failing if repo is already full clone
+          git push --force gitlab ${GITHUB_REF#refs/heads/}  # Push only the triggered branch
