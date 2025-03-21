@@ -8,7 +8,7 @@ import (
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
 // - POST: Adds a new dashboard configuration.
-// - GET: Views the current dashboard configuration.
+// - GET: Views all dashboard configurations or a specific one if an {id} parameter is provided.
 // - PUT: Replaces the existing dashboard configuration.
 // - DELETE: Deletes the current dashboard configuration.
 // For unsupported methods, it responds with a 405 Method Not Allowed status.

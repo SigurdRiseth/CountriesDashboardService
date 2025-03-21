@@ -314,10 +314,18 @@ This is the response to the delete request.
 ### /dashboard/v1/status/
 
 ## Contributors
-
 This project was developed by:
 
-- [**Sigurd Riseth**](https://github.com/SigurdRiseth)
-  - Implemented...
-- [**Theodor Sjetnan Utvik**](https://github.com/TheodorUtvik)
-  - Developed...
+- **[Sigurd Riseth](https://github.com/SigurdRiseth)**
+  - Contributions:
+    - Lead developer for the REST API architecture
+    - Implemented OAuth authentication
+    - Managed bug fixes and performance optimizations
+
+- **[Theodor Sjetnan Utvik](https://github.com/TheodorUtvik)**
+  - Contributions:
+    - Developed database schemas and cloud deployment configuration
+    - Implemented request validation and error handling
+    - Created GitHub issues and reviewed PRs
+
+To view detailed contribution logs, see the [GitHub Insights](https://github.com/SigurdRiseth/CountriesDashboardService/pulse) or the [Contributors Page](https://github.com/SigurdRiseth/CountriesDashboardService/graphs/contributors).  
