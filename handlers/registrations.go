@@ -18,12 +18,14 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 		addDashboardConfiguration(writer, request)
 	case http.MethodGet:
 		viewDashboardConfiguration(writer, request)
+	case http.MethodHead:
+		handleHeadRequest(writer, request)
 	case http.MethodPut:
 		replaceDashboardConfiguration(writer, request)
 	case http.MethodDelete:
 		deleteDashboardConfiguration(writer, request)
 	default:
-		log.Println("Unsupported request method " + request.Method)
+		log.Printf("Unsupported request method: %s", request.Method)
 		http.Error(writer, "Unsupported request method "+request.Method, http.StatusMethodNotAllowed)
 		return
 	}
@@ -51,4 +53,10 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusNotImplemented)
 	writer.Write([]byte("DELETE method not implemented yet"))
+}
+
+// TODO: !!ADVANCED TASK!! Implement the handleHeadRequest function. Issue #10
+func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
+	writer.WriteHeader(http.StatusNotImplemented)
+	writer.Write([]byte("HEAD method not implemented yet"))
 }
