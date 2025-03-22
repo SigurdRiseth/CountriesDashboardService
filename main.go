@@ -1,6 +1,7 @@
 package main
 
 import (
+	"CountriesDashboardService/firebase"
 	"CountriesDashboardService/handlers"
 	"log"
 	"net/http"
@@ -10,6 +11,10 @@ import (
 // It starts the HTTP server on port 8080 and registers the routes.
 func main() {
 	log.Println("Starting server...")
+
+	// Initialize Firebase and Firestore
+	firebase.InitFirebase()
+	defer firebase.CloseFirebase()
 
 	// Start the server
 	router := http.NewServeMux()

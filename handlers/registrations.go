@@ -9,10 +9,12 @@ import (
 // It supports the following methods:
 // - POST: Adds a new dashboard configuration.
 // - GET: Views all dashboard configurations or a specific one if an {id} parameter is provided.
+// - HEAD: Checks if a specific dashboard configuration exists.
 // - PUT: Replaces the existing dashboard configuration.
 // - DELETE: Deletes the current dashboard configuration.
 // For unsupported methods, it responds with a 405 Method Not Allowed status.
 func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
+	log.Println("Received " + request.Method + " request.")
 	switch request.Method {
 	case http.MethodPost:
 		addDashboardConfiguration(writer, request)
