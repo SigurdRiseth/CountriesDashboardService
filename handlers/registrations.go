@@ -119,8 +119,38 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 
 // TODO: Implement the viewDashboardConfiguration function. Issue #6-7
 func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusNotImplemented)
-	writer.Write([]byte("GET method not implemented yet"))
+	id := request.URL.Query().Get("id")
+	var response interface{}
+	var err error
+
+	if id != "" {
+		log.Println("Retrieving single dashboard configuration with ID: " + id)
+		response, err = getDashboardConfigFromDB(id) // return a single dashboard configuration
+	} else {
+		log.Println("Retrieving all dashboard configurations")
+		response, err = getAllDashboardConfigsFromDB() // return all dashboard configurations
+	}
+
+	if err != nil {
+		http.Error(writer, "Error retrieving dashboard configurations: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Encode and send the response
+	writer.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(writer).Encode(response); err != nil {
+		http.Error(writer, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+// TODO: Fix
+func getDashboardConfigFromDB(id string) (interface{}, error) {
+	return nil, nil
+}
+
+// TODO: Fix
+func getAllDashboardConfigsFromDB() (interface{}, error) {
+	return nil, nil
 }
 
 // TODO: Implement the replaceDashboardConfiguration function. Issue #8
@@ -142,6 +172,7 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 }
 
 // sendErrorResponse is a helper function to send error responses in JSON format.
+// It logs the error message and sends a response with the specified status code.
 func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
 	log.Println(message)
 	http.Error(writer, message, statusCode)
