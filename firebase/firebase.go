@@ -18,6 +18,7 @@ var (
 // It sets up the context and client variables used throughout the program.
 // If initialization fails, the function logs a fatal error and terminates the program.
 func InitFirebase() {
+
 	// Initialize Firebase app
 	Ctx = context.Background()
 	sa := option.WithCredentialsFile("./firebase-adminsdk.json")
