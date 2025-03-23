@@ -77,44 +77,42 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	writer.Header().Set("Content-Type", "application/json")
 
 	// Decode the request body into a RegistrationRequestBody struct
-	decoder := json.NewDecoder(request.Body)
 	var content consts.RegistrationRequestBody
-	err := decoder.Decode(&content)
-	if err != nil {
-		log.Println("Failed to decode request body: " + err.Error())
-		http.Error(writer, "Failed to decode request body: "+err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(request.Body).Decode(&content); err != nil {
+		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Set the timeChanged field to the current time
+	// Validate required fields in content (optional step)
+	if content.Country == "" || content.IsoCode == "" {
+		sendErrorResponse(writer, "Missing required fields: Name or Description", http.StatusBadRequest)
+		return
+	}
+
+	// Set the current timestamp in RFC3339 format
 	timeNow := time.Now().Format(time.RFC3339)
 	content.TimeChanged = timeNow
 
-	// Check if the Firebase client is initialized
+	// Check if Firebase client is initialized
 	if firebase.Client == nil {
-		log.Println("Firebase client is not initialized.")
-		http.Error(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
 		return
 	}
 
-	// Write the request body to Firestore
-	log.Println("Received request to add document for content:", content)
+	// Write the document to Firestore
 	id, _, err := firebase.Client.Collection(collection).Add(firebase.Ctx, content)
 	if err != nil {
-		log.Println("Error when adding document: " + err.Error())
-		http.Error(writer, "Error when adding document: "+err.Error(), http.StatusBadRequest)
+		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	log.Println("Document added to collection. Identifier of returned document: " + id.ID)
 
-	// Prepare the response struct
+	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
 		Id:         id.ID,
 		LastChange: timeNow,
 	}
-
-	// Send JSON response
-	if err = json.NewEncoder(writer).Encode(response); err != nil {
+	if err := json.NewEncoder(writer).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}
 }
@@ -141,4 +139,10 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 	writer.WriteHeader(http.StatusNotImplemented)
 	writer.Write([]byte("HEAD method not implemented yet"))
+}
+
+// sendErrorResponse is a helper function to send error responses in JSON format.
+func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
+	log.Println(message)
+	http.Error(writer, message, statusCode)
 }
