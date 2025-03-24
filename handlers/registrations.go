@@ -6,6 +6,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"google.golang.org/api/iterator"
 	"log"
 	"net/http"
@@ -389,10 +390,70 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	log.Printf("Successfully deleted configuration with ID: %s", id)
 }
 
-// TODO: !!ADVANCED TASK!! Implement the handleHeadRequest function. Issue #10
+// handleHeadRequest handles HTTP HEAD requests to check the existence and size of dashboard configurations.
+//
+// This function performs the following steps:
+//  1. Extracts the configuration ID from the URL query parameters.
+//  2. If an ID is provided, retrieves the specific dashboard configuration and calculates its size.
+//  3. If no ID is provided, retrieves all dashboard configurations and calculates the total size.
+//  4. Sets the "Content-Type" and "Content-Length" headers in the response.
+//  5. Returns a 204 No Content status with no body.
+//
+// Parameters:
+//   - writer: `http.ResponseWriter`
+//     The HTTP response writer used to send data back to the client.
+//   - request: `*http.Request`
+//     The incoming HTTP request, which may include a configuration ID in the URL query parameters.
+//
+// Behavior:
+//   - If an error occurs while retrieving or marshalling the data, it returns a `500 Internal Server Error` status.
+//   - If no ID is provided, it iterates through all dashboard configurations and accumulates their sizes.
+//   - Sets the "Content-Length" header to the size of the retrieved data and returns a `204 No Content` status.
 func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusNotImplemented)
-	writer.Write([]byte("HEAD method not implemented yet"))
+	var totalContentLength int
+
+	// Extract the ID from the URL path
+	id := request.URL.Query().Get("id")
+
+	if id != "" {
+		// Get the specific dashboard config if an ID is provided
+		doc, err := getDashboardConfigFromDB(id)
+		if err != nil {
+			sendErrorResponse(writer, "Error processing HEAD request: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Calculate the Content-Length for this specific document
+		jsonData, err := json.Marshal(doc)
+		if err != nil {
+			sendErrorResponse(writer, "Error marshalling document data: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		totalContentLength = len(jsonData) // Size of this single document
+	} else {
+		// If no ID is provided, iterate through all dashboard configs
+		docs, err := getAllDashboardConfigsFromDB()
+		if err != nil {
+			sendErrorResponse(writer, "Error processing HEAD request: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Iterate through each document and accumulate the size
+		for _, doc := range docs {
+			jsonData, err := json.Marshal(doc)
+			if err != nil {
+				sendErrorResponse(writer, "Error marshalling document data: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			totalContentLength += len(jsonData) // Add the length of each document
+		}
+	}
+
+	// Set and write header for the request
+	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Content-Length", fmt.Sprintf("%d", totalContentLength))
+	writer.WriteHeader(http.StatusNoContent)
 }
 
 // sendErrorResponse is a helper function to send error responses in JSON format.
