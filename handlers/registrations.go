@@ -217,9 +217,108 @@ func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
 }
 
 // TODO: Implement the replaceDashboardConfiguration function. Issue #8
+// replaceDashboardConfiguration handles HTTP PUT requests to replace an existing dashboard configuration in Firestore.
+//
+// This function performs the following steps:
+// 1. Extracts the configuration ID from the URL path.
+// 2. Decodes the incoming JSON payload into a `RegistrationRequestBody` struct.
+// 3. Validates the request body for required fields.
+// 4. Checks if the configuration exists in Firestore.
+// 5. Updates the configuration with the new data, including a new `lastChange` timestamp.
+// 6. Returns a 204 No Content response with an empty body on success.
+//
+// Parameters:
+//   - writer: `http.ResponseWriter`
+//     The HTTP response writer used to send data back to the client.
+//   - request: `*http.Request`
+//     The incoming HTTP request, which must include a valid configuration ID in the URL path
+//     and a valid JSON payload in the request body.
+//
+// Behavior:
+//   - If no ID is provided in the URL, returns a `400 Bad Request` status.
+//   - If the request body is invalid JSON, returns a `400 Bad Request` status.
+//   - If required fields are missing, returns a `400 Bad Request` status.
+//   - If the Firebase client is not initialized, returns a `500 Internal Server Error` status.
+//   - If the document doesn't exist, returns a `404 Not Found` status.
+//   - If the update fails, returns a `500 Internal Server Error` status.
+//   - Upon successful update, returns a `204 No Content` status with an empty body.
+//
+// Example Request:
+//
+//	PUT /dashboard/v1/registrations/516dba7f015f2a68
+//	Content-Type: application/json
+//	{
+//	   "country": "Norway",
+//	   "isoCode": "NO",
+//	   "features": {
+//	                  "temperature": false,
+//	                  "precipitation": true,
+//	                  "capital": true,
+//	                  "coordinates": true,
+//	                  "population": true,
+//	                  "area": false,
+//	                  "targetCurrencies": ["EUR", "SEK"]
+//	               }
+//	}
 func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusNotImplemented)
-	writer.Write([]byte("PUT method not implemented yet"))
+	log.Println("Processing PUT request for dashboard configuration")
+
+	// Extract the ID from the URL path
+	id := request.URL.Query().Get("id")
+
+	// Validate the ID
+	if id == "" {
+		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
+		return
+	}
+
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Decode the request body into a RegistrationRequestBody struct
+	var content consts.RegistrationRequestBody
+	if err := json.NewDecoder(request.Body).Decode(&content); err != nil {
+		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if content.Country == "" || content.IsoCode == "" {
+		sendErrorResponse(writer, "Missing required fields: country or isoCode", http.StatusBadRequest)
+		return
+	}
+
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(collection).Doc(id)
+
+	// Check if document exists first
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Set the current timestamp in RFC3339 format
+	timeNow := time.Now().Format(time.RFC3339)
+	content.TimeChanged = timeNow
+
+	// Update the document in Firestore
+	_, err = docRef.Set(firebase.Ctx, content)
+	if err != nil {
+		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 No Content on successful update
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully updated configuration with ID: %s", id)
 }
 
 // deleteDashboardConfiguration handles HTTP DELETE requests to remove a specific dashboard configuration from Firestore.
