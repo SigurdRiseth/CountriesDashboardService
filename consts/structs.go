@@ -16,6 +16,7 @@ type RegistrationRequestBody struct {
 	Features    Features `json:"features"`
 	TimeChanged string   `json:"timeChanged"`
 }
+
 type RegistrationRequestResponse struct {
 	Id         string `json:"id"`
 	LastChange string `json:"lastChange"`
