@@ -183,10 +183,72 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 	writer.Write([]byte("PUT method not implemented yet"))
 }
 
-// TODO: Implement the deleteDashboardConfiguration function. Issue #9
+// deleteDashboardConfiguration handles HTTP DELETE requests to remove a specific dashboard configuration from Firestore.
+//
+// This function performs the following steps:
+// 1. Extracts the configuration ID from the URL path.
+// 2. Validates that an ID is provided.
+// 3. Verifies the document exists before deletion (to distinguish between not-found and other errors).
+// 4. Attempts to delete the document from Firestore using the provided ID.
+// 5. Returns appropriate HTTP status codes based on the operation's success or failure.
+//
+// Parameters:
+//   - writer: `http.ResponseWriter`
+//     The HTTP response writer used to send data back to the client.
+//   - request: `*http.Request`
+//     The incoming HTTP request, which must include a valid configuration ID in the URL path.
+//
+// Behavior:
+//   - If no ID is provided in the URL, returns a `400 Bad Request` status.
+//   - If the Firebase client is not initialized, returns a `500 Internal Server Error` status.
+//   - If the document doesn't exist, returns a `404 Not Found` status.
+//   - If deletion fails for other reasons, returns a `500 Internal Server Error` status.
+//   - Upon successful deletion, returns a `204 No Content` status with an empty body, as per the specification.
+//
+// Example Request:
+//
+//	DELETE /dashboard/v1/registrations/?id=516dba7f015f2a68
 func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusNotImplemented)
-	writer.Write([]byte("DELETE method not implemented yet"))
+
+	// Extract the ID from the URL path
+	id := request.URL.Query().Get("id")
+
+	// Validate the ID
+	if id == "" {
+		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
+		return
+	}
+
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(collection).Doc(id)
+
+	// Check if document exists first (to distinguish between not-found and other errors)
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		// Firestore returns a generic error for not found
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Attempt to delete the document
+	if _, err := docRef.Delete(firebase.Ctx); err != nil {
+		sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 No Content on successful deletion
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully deleted configuration with ID: %s", id)
 }
 
 // TODO: !!ADVANCED TASK!! Implement the handleHeadRequest function. Issue #10
