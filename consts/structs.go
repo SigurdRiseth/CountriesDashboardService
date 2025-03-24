@@ -14,7 +14,7 @@ type RegistrationRequestBody struct {
 	Country     string   `json:"country"`
 	IsoCode     string   `json:"isoCode"`
 	Features    Features `json:"features"`
-	TimeChanged string   `json:"timeChanged"` // TODO: Surely not ideal since users can now provide this?
+	TimeChanged string   `json:"timeChanged"`
 }
 type RegistrationRequestResponse struct {
 	Id         string `json:"id"`
