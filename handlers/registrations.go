@@ -143,9 +143,33 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 	}
 }
 
-// TODO: Fix
-func getDashboardConfigFromDB(id string) (interface{}, error) {
-	return nil, nil
+// getDashboardConfigFromDB retrieves a specific dashboard configuration from Firestore based on the provided ID.
+//
+// Parameters:
+//   - id: string
+//     The Firestore-generated document ID of the dashboard configuration to retrieve.
+//
+// Returns:
+//   - *consts.RegistrationRequestBody: A pointer to the retrieved dashboard configuration struct.
+//   - error: An error object if an error occurred during retrieval, otherwise nil.
+func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error) {
+	// Retrieve specific message based on id (Firestore-generated hash)
+	res := firebase.Client.Collection(collection).Doc(id)
+
+	// Retrieve reference to document
+	doc, err := res.Get(firebase.Ctx)
+	if err != nil {
+		log.Println("Error extracting body of returned document of message " + id)
+		return nil, err
+	}
+
+	var content consts.RegistrationRequestBody
+	if err := doc.DataTo(&content); err != nil {
+		log.Println("Error converting document data to struct.")
+		return nil, err
+	}
+
+	return &content, nil
 }
 
 // TODO: Fix
