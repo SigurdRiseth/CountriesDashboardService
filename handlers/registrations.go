@@ -22,6 +22,7 @@ const collection = "registrations"
 // - HEAD: Checks if a specific dashboard configuration exists.
 // - PUT: Replaces the existing dashboard configuration.
 // - DELETE: Deletes the current dashboard configuration.
+// - PATCH: Partially updates the existing dashboard configuration.
 // For unsupported methods, it responds with a 405 Method Not Allowed status.
 func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Registrations endpoint received " + request.Method + " request.")
@@ -36,6 +37,8 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 		replaceDashboardConfiguration(writer, request)
 	case http.MethodDelete:
 		deleteDashboardConfiguration(writer, request)
+	case http.MethodPatch:
+		handlePatchRequest(writer, request)
 	default:
 		log.Printf("Unsupported request method: %s", request.Method)
 		http.Error(writer, "Unsupported request method "+request.Method, http.StatusMethodNotAllowed)
@@ -347,7 +350,6 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 //
 //	DELETE /dashboard/v1/registrations/?id=516dba7f015f2a68
 func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
-
 	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
 
@@ -400,4 +402,120 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
 	log.Println(message)
 	http.Error(writer, message, statusCode)
+}
+
+// handlePatchRequest handles HTTP PATCH requests to partially update an existing dashboard configuration in Firestore.
+//
+// This function performs the following steps:
+// 1. Extracts the configuration ID from the URL path.
+// 2. Decodes the incoming JSON payload into a map for partial updates.
+// 3. Validates the request body.
+// 4. Checks if the configuration exists in Firestore.
+// 5. Applies the partial updates to the existing document, preserving unchanged fields.
+// 6. Updates the `lastChange` timestamp.
+// 7. Returns a 204 No Content response with an empty body on success.
+//
+// Parameters:
+//   - writer: `http.ResponseWriter`
+//   - request: `*http.Request`
+//
+// Behavior:
+//   - If no ID is provided, returns a `400 Bad Request` status.
+//   - If the request body is invalid JSON, returns a `400 Bad Request` status.
+//   - If the document doesn't exist, returns a `404 Not Found` status.
+//   - If the update fails, returns a `500 Internal Server Error` status.
+//   - Upon successful update, returns a `204 No Content` status with an empty body.
+//
+// Example Request:
+//
+//	PATCH /dashboard/v1/registrations/516dba7f015f2a68
+//	Content-Type: application/json
+//	{
+//	   "features": {
+//	       "temperature": false,
+//	       "targetCurrencies": ["EUR", "SEK"]
+//	   }
+//	}
+func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
+	log.Println("Processing PATCH request for dashboard configuration")
+
+	// Extract the ID from the URL path
+	id := request.URL.Query().Get("id")
+
+	// Validate the ID
+	if id == "" {
+		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
+		return
+	}
+
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(collection).Doc(id)
+
+	// Check if document exists
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Decode the request body into a map for partial updates
+	var updates map[string]interface{}
+	if err := json.NewDecoder(request.Body).Decode(&updates); err != nil {
+		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Add the updated timestamp
+	timeNow := time.Now().Format(time.RFC3339)
+	updates["lastChange"] = timeNow
+
+	// Update the document in Firestore with partial updates
+	_, err = docRef.Update(firebase.Ctx, convertMapToFirestoreUpdates(updates, ""))
+	if err != nil {
+		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 No Content on successful update
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully patched configuration with ID: %s", id)
+}
+
+// convertMapToFirestoreUpdates converts a nested map of updates into a slice of Firestore Update structs.
+func convertMapToFirestoreUpdates(updates map[string]interface{}, parentPath string) []firestore.Update {
+	var firestoreUpdates []firestore.Update
+
+	for key, value := range updates {
+		// Capitalize the first letter of the key if it matches struct names
+		if key == "features" {
+			key = "Features"
+		}
+
+		currentPath := key
+		if parentPath != "" {
+			currentPath = parentPath + "." + key
+		}
+
+		switch v := value.(type) {
+		case map[string]interface{}: // Handle nested maps recursively
+			firestoreUpdates = append(firestoreUpdates, convertMapToFirestoreUpdates(v, currentPath)...)
+		default:
+			firestoreUpdates = append(firestoreUpdates, firestore.Update{
+				Path:  currentPath,
+				Value: value,
+			})
+		}
+	}
+
+	return firestoreUpdates
 }
