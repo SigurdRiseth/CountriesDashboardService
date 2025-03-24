@@ -3,7 +3,10 @@ package handlers
 import (
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/firebase"
+	"cloud.google.com/go/firestore"
 	"encoding/json"
+	"errors"
+	"google.golang.org/api/iterator"
 	"log"
 	"net/http"
 	"time"
@@ -132,14 +135,14 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 	}
 
 	if err != nil {
-		http.Error(writer, "Error retrieving dashboard configurations: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, "Error retrieving dashboard configurations: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Encode and send the response
 	writer.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		http.Error(writer, "Failed to encode response", http.StatusInternalServerError)
+		sendErrorResponse(writer, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
 
@@ -172,9 +175,45 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 	return &content, nil
 }
 
-// TODO: Fix
-func getAllDashboardConfigsFromDB() (interface{}, error) {
-	return nil, nil
+// getAllDashboardConfigsFromDB retrieves all dashboard configurations from the Firestore collection.
+// It returns a slice of RegistrationRequestBody structs or an error if something goes wrong during the process.
+//
+// Query Details:
+//   - Orders the results by the "TimeChanged" field in ascending order.
+//   - Limits the retrieval to a predefined maximum number of documents (e.g., 100) for performance reasons.
+//   - Gracefully handles Firestore iteration, stopping when all documents have been processed.
+//
+// Returns:
+//   - []consts.RegistrationRequestBody: A slice containing all successfully retrieved and deserialized dashboard configurations.
+//   - error: If an error occurs during Firestore document retrieval or data conversion.
+//
+// Example Usage:
+//
+//	configs, err := getAllDashboardConfigsFromDB()
+//	if err != nil {
+//	    log.Fatalf("Failed to get dashboard configurations: %v", err)
+//	}
+//	fmt.Printf("Retrieved %d configurations.\n", len(configs))
+func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
+	iter := firebase.Client.Collection(collection).Limit(100).OrderBy("TimeChanged", firestore.Asc).Documents(firebase.Ctx)
+
+	var content []consts.RegistrationRequestBody
+	for doc, err := iter.Next(); !errors.Is(err, iterator.Done); doc, err = iter.Next() {
+		if err != nil {
+			log.Printf("Error iterating Firestore documents: %v", err)
+			return nil, err
+		}
+
+		var item consts.RegistrationRequestBody
+		if err := doc.DataTo(&item); err != nil {
+			log.Printf("Error converting document %s data to struct: %v", doc.Ref.ID, err)
+			return nil, err
+		}
+
+		content = append(content, item)
+	}
+
+	return content, nil
 }
 
 // TODO: Implement the replaceDashboardConfiguration function. Issue #8
