@@ -10,6 +10,7 @@ import (
 	"google.golang.org/api/iterator"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -23,6 +24,7 @@ const collection = "registrations"
 // - HEAD: Checks if a specific dashboard configuration exists.
 // - PUT: Replaces the existing dashboard configuration.
 // - DELETE: Deletes the current dashboard configuration.
+// - PATCH: Partially updates the existing dashboard configuration.
 // For unsupported methods, it responds with a 405 Method Not Allowed status.
 func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Registrations endpoint received " + request.Method + " request.")
@@ -37,6 +39,8 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 		replaceDashboardConfiguration(writer, request)
 	case http.MethodDelete:
 		deleteDashboardConfiguration(writer, request)
+	case http.MethodPatch:
+		handlePatchRequest(writer, request)
 	default:
 		sendErrorResponse(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
 		return
@@ -347,7 +351,6 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 //
 //	DELETE /dashboard/v1/registrations/?id=516dba7f015f2a68
 func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
-
 	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
 
@@ -451,4 +454,120 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
 	log.Println(message)
 	http.Error(writer, message, statusCode)
+}
+
+// handlePatchRequest handles HTTP PATCH requests to partially update an existing dashboard configuration in Firestore.
+// It extracts the configuration ID from the URL path, validates the request body, checks if the configuration exists,
+// applies the partial updates to the document, and updates the 'TimeChanged' timestamp. The function returns a 204 No Content
+// response on successful update or appropriate error statuses (400, 404, 500) if validation fails or an error occurs during processing.
+//
+// The function expects the request body to be a JSON object representing the fields to update, with the 'features' field being
+// the main object containing the updatable fields.
+//
+// Parameters:
+//   - writer: http.ResponseWriter - The response writer to send the HTTP response.
+//   - request: *http.Request - The incoming HTTP request containing the configuration ID and the update payload.
+//
+// Behavior:
+//   - The configuration ID is extracted from the URL path, and if missing or invalid, a 400 Bad Request is returned.
+//   - If the Firestore client is not initialized, a 500 Internal Server Error is returned.
+//   - The function checks if the document exists in Firestore, returning a 404 Not Found if the document doesn't exist.
+//   - If the request body contains invalid JSON, a 400 Bad Request response is returned.
+//   - The 'features' in the payload are iterated, and only non-zero fields are updated in the Firestore document.
+//   - The 'TimeChanged' timestamp is updated to the current time.
+//   - A 204 No Content response is returned on successful update, with no body in the response.
+//
+// Example Request:
+//
+//	PATCH /dashboard/v1/registrations/?id=516dba7f015f2a68
+//	Content-Type: application/json
+//	{
+//	    "features": {
+//	        "temperature": false,
+//	        "targetCurrencies": ["EUR", "SEK"]
+//	    }
+//	}
+//
+// Example Response:
+//
+//	Success (204 No Content):
+//	  HTTP/1.1 204 No Content
+//
+//	Error (400 Bad Request):
+//	  HTTP/1.1 400 Bad Request
+//	  {
+//	      "error": "Invalid JSON payload: <error details>"
+//	  }
+//
+//	Error (404 Not Found):
+//	  HTTP/1.1 404 Not Found
+//	  {
+//	      "error": "Configuration not found"
+//	  }
+func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
+	// Extract the ID from the URL path
+	id := request.URL.Query().Get("id")
+
+	// Validate the ID
+	if id == "" {
+		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
+		return
+	}
+
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(collection).Doc(id)
+	log.Printf("Patching configuration with ID: %s", id)
+
+	// Check if the document exists
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Decode the request body into the UserUpdateRequest struct for partial updates
+	var inputJSON consts.UserUpdateRequest
+	if err := json.NewDecoder(request.Body).Decode(&inputJSON); err != nil {
+		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Prepare the updates based on the struct fields using reflection
+	var updates []firestore.Update
+	val := reflect.ValueOf(inputJSON.Features)
+	typ := reflect.TypeOf(inputJSON.Features)
+
+	// Iterate through the fields of the Features struct
+	for i := 0; i < val.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i).Interface()
+		// Only add to the update if the value is not nil
+		if value != nil {
+			updates = append(updates, firestore.Update{Path: "Features." + field.Name, Value: value})
+		}
+	}
+
+	// Add the lastChange timestamp
+	updates = append(updates, firestore.Update{Path: "TimeChanged", Value: time.Now().Format(time.RFC3339)})
+
+	// Perform the update
+	_, err = docRef.Update(firebase.Ctx, updates)
+	if err != nil {
+		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 No Content on successful update
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully patched configuration with ID: %s", id)
 }
