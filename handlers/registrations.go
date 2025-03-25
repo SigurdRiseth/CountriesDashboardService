@@ -477,10 +477,16 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 
 	// Add the updated timestamp
 	timeNow := time.Now().Format(time.RFC3339)
-	updates["lastChange"] = timeNow
+	updates["TimeChanged"] = timeNow
 
-	// Update the document in Firestore with partial updates
-	_, err = docRef.Update(firebase.Ctx, convertMapToFirestoreUpdates(updates, ""))
+	// Convert updates map to Firestore-compatible updates
+	firestoreUpdates := convertMapToFirestoreUpdates(updates, "")
+
+	// Log the updates for debugging
+	log.Printf("Updating document with the following changes: %v", firestoreUpdates)
+
+	// Update the document in Firestore
+	_, err = docRef.Update(firebase.Ctx, firestoreUpdates)
 	if err != nil {
 		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -496,7 +502,7 @@ func convertMapToFirestoreUpdates(updates map[string]interface{}, parentPath str
 	var firestoreUpdates []firestore.Update
 
 	for key, value := range updates {
-		// Capitalize the first letter of the key if it matches struct names
+		// If the key is "features", make sure it's capitalized to "Features"
 		if key == "features" {
 			key = "Features"
 		}
@@ -506,16 +512,16 @@ func convertMapToFirestoreUpdates(updates map[string]interface{}, parentPath str
 			currentPath = parentPath + "." + key
 		}
 
-		switch v := value.(type) {
-		case map[string]interface{}: // Handle nested maps recursively
-			firestoreUpdates = append(firestoreUpdates, convertMapToFirestoreUpdates(v, currentPath)...)
-		default:
+		if nestedMap, ok := value.(map[string]interface{}); ok {
+			// Recursively handle nested maps
+			firestoreUpdates = append(firestoreUpdates, convertMapToFirestoreUpdates(nestedMap, currentPath)...)
+		} else {
+			// Add the update directly
 			firestoreUpdates = append(firestoreUpdates, firestore.Update{
 				Path:  currentPath,
 				Value: value,
 			})
 		}
 	}
-
 	return firestoreUpdates
 }
