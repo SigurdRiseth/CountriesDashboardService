@@ -4,9 +4,11 @@ import (
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/firebase"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"time"
 )
 
 // ViewDashboard handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
@@ -62,8 +64,18 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// Fetch additional data from the REST Countries API
-	url := consts.RestCountriesAPI + "/name/" + content.Country
+	// Prepare the result object
+	result := map[string]interface{}{
+		"isoCode":       content.IsoCode,
+		"country":       content.Country,
+		"features":      map[string]interface{}{},
+		"lastRetrieval": time.Now().Format("20060102 15:04"),
+	}
+
+	features := result["features"].(map[string]interface{})
+
+	// Fetch data from REST Countries API
+	url := fmt.Sprintf("%s/name/%s", consts.RestCountriesAPI, content.Country)
 	resp, err := http.Get(url)
 	if err != nil {
 		sendErrorResponse(writer, "Error fetching data from REST Countries API: "+err.Error(), http.StatusInternalServerError)
@@ -77,7 +89,6 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// Parse the API response
 	var apiResponse []map[string]interface{}
 	if err := json.Unmarshal(body, &apiResponse); err != nil {
 		sendErrorResponse(writer, "Error parsing API response: "+err.Error(), http.StatusInternalServerError)
@@ -89,36 +100,73 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// Extract the relevant data
-	result := make(map[string]interface{})
 	countryData := apiResponse[0]
 
-	// Extraction methods
 	if content.Features.Capital {
 		if capital, ok := extractCapital(countryData); ok {
-			result["capital"] = capital
+			features["capital"] = capital
 		}
 	}
 
 	if content.Features.Coordinates {
 		if coordinates, ok := extractCoordinates(countryData); ok {
-			result["coordinates"] = coordinates
+			features["coordinates"] = coordinates
 		}
 	}
 
 	if content.Features.Population {
 		if population, ok := extractPopulation(countryData); ok {
-			result["population"] = population
+			features["population"] = population
 		}
 	}
 
 	if content.Features.Area {
 		if area, ok := extractArea(countryData); ok {
-			result["area"] = area
+			features["area"] = area
 		}
 	}
 
-	log.Printf("Filtered data: %v", result)
+	if content.Features.TargetCurrencies != nil && len(content.Features.TargetCurrencies) > 0 {
+		if currencies, ok := extractCurrencyCodes(countryData); ok {
+			features["targetCurrencies"] = currencies
+		}
+	}
+
+	var latitude, longitude float64
+	if content.Features.Coordinates {
+		if coordinates, ok := extractCoordinates(countryData); ok {
+			features["coordinates"] = coordinates
+			latitude = coordinates["latitude"].(float64)
+			longitude = coordinates["longitude"].(float64)
+		}
+	}
+
+	if (content.Features.Temperature || content.Features.Precipitation) && latitude != 0 && longitude != 0 {
+		meteoURL := fmt.Sprintf("%s?latitude=%.2f&longitude=%.2f&hourly=temperature_2m,precipitation", consts.OpenMeteoAPI, latitude, longitude)
+		meteoResp, err := http.Get(meteoURL)
+		if err != nil {
+			log.Println("Error fetching data from Open-Meteo API:", err)
+		} else {
+			defer meteoResp.Body.Close()
+			meteoBody, _ := ioutil.ReadAll(meteoResp.Body)
+
+			var meteoData map[string]interface{}
+			if err := json.Unmarshal(meteoBody, &meteoData); err == nil {
+				if hourlyData, ok := meteoData["hourly"].(map[string]interface{}); ok {
+					if temps, ok := hourlyData["temperature_2m"].([]interface{}); ok && content.Features.Temperature {
+						temperature := calculateAverage(temps)
+						features["temperature"] = temperature
+					}
+					if precs, ok := hourlyData["precipitation"].([]interface{}); ok && content.Features.Precipitation {
+						precipitation := calculateAverage(precs)
+						features["precipitation"] = precipitation
+					}
+				}
+			}
+		}
+	}
+
+	log.Printf("Filtered result: %v", result)
 
 	// Send the filtered response
 	if err := json.NewEncoder(writer).Encode(result); err != nil {
@@ -128,6 +176,21 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 
 	log.Println("Successfully retrieved and filtered the dashboard configuration.")
 }
+
+func calculateAverage(data []interface{}) float64 {
+	sum := 0.0
+	for _, v := range data {
+		if value, ok := v.(float64); ok {
+			sum += value
+		}
+	}
+	if len(data) == 0 {
+		return 0
+	}
+	return sum / float64(len(data))
+}
+
+// Methods to extract specific fields from the REST Countries API response
 
 func extractCapital(countryData map[string]interface{}) (interface{}, bool) {
 	if capital, ok := countryData["capital"].([]interface{}); ok && len(capital) > 0 {
@@ -158,4 +221,16 @@ func extractArea(countryData map[string]interface{}) (float64, bool) {
 		return area, true
 	}
 	return 0, false
+}
+
+// extractCurrencyCodes extracts the currency codes from the country data
+func extractCurrencyCodes(countryData map[string]interface{}) ([]string, bool) {
+	if currencies, ok := countryData["currencies"].(map[string]interface{}); ok {
+		var currencyCodes []string
+		for code := range currencies {
+			currencyCodes = append(currencyCodes, code)
+		}
+		return currencyCodes, true
+	}
+	return nil, false
 }
