@@ -1,13 +1,17 @@
 package consts
 
 type Features struct {
-	Temperature      bool     `json:"temperature"`
-	Precipitation    bool     `json:"precipitation"`
-	Capital          bool     `json:"capital"`
-	Coordinates      bool     `json:"coordinates"`
-	Population       bool     `json:"population"`
-	Area             bool     `json:"area"`
-	TargetCurrencies []string `json:"targetCurrencies"`
+	Temperature      *bool     `json:"temperature"`
+	Precipitation    *bool     `json:"precipitation"`
+	Capital          *bool     `json:"capital"`
+	Coordinates      *bool     `json:"coordinates"`
+	Population       *bool     `json:"population"`
+	Area             *bool     `json:"area"`
+	TargetCurrencies *[]string `json:"targetCurrencies"`
+}
+
+type UserUpdateRequest struct {
+	Features Features `json:"features"`
 }
 
 type RegistrationRequestBody struct {

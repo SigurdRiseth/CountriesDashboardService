@@ -9,6 +9,7 @@ import (
 	"google.golang.org/api/iterator"
 	"log"
 	"net/http"
+	"reflect"
 	"time"
 )
 
@@ -405,40 +406,54 @@ func sendErrorResponse(writer http.ResponseWriter, message string, statusCode in
 }
 
 // handlePatchRequest handles HTTP PATCH requests to partially update an existing dashboard configuration in Firestore.
+// It extracts the configuration ID from the URL path, validates the request body, checks if the configuration exists,
+// applies the partial updates to the document, and updates the 'TimeChanged' timestamp. The function returns a 204 No Content
+// response on successful update or appropriate error statuses (400, 404, 500) if validation fails or an error occurs during processing.
 //
-// This function performs the following steps:
-// 1. Extracts the configuration ID from the URL path.
-// 2. Decodes the incoming JSON payload into a map for partial updates.
-// 3. Validates the request body.
-// 4. Checks if the configuration exists in Firestore.
-// 5. Applies the partial updates to the existing document, preserving unchanged fields.
-// 6. Updates the `lastChange` timestamp.
-// 7. Returns a 204 No Content response with an empty body on success.
+// The function expects the request body to be a JSON object representing the fields to update, with the 'features' field being
+// the main object containing the updatable fields.
 //
 // Parameters:
-//   - writer: `http.ResponseWriter`
-//   - request: `*http.Request`
+//   - writer: http.ResponseWriter - The response writer to send the HTTP response.
+//   - request: *http.Request - The incoming HTTP request containing the configuration ID and the update payload.
 //
 // Behavior:
-//   - If no ID is provided, returns a `400 Bad Request` status.
-//   - If the request body is invalid JSON, returns a `400 Bad Request` status.
-//   - If the document doesn't exist, returns a `404 Not Found` status.
-//   - If the update fails, returns a `500 Internal Server Error` status.
-//   - Upon successful update, returns a `204 No Content` status with an empty body.
+//   - The configuration ID is extracted from the URL path, and if missing or invalid, a 400 Bad Request is returned.
+//   - If the Firestore client is not initialized, a 500 Internal Server Error is returned.
+//   - The function checks if the document exists in Firestore, returning a 404 Not Found if the document doesn't exist.
+//   - If the request body contains invalid JSON, a 400 Bad Request response is returned.
+//   - The 'features' in the payload are iterated, and only non-zero fields are updated in the Firestore document.
+//   - The 'TimeChanged' timestamp is updated to the current time.
+//   - A 204 No Content response is returned on successful update, with no body in the response.
 //
 // Example Request:
 //
-//	PATCH /dashboard/v1/registrations/516dba7f015f2a68
+//	PATCH /dashboard/v1/registrations/?id=516dba7f015f2a68
 //	Content-Type: application/json
 //	{
-//	   "features": {
-//	       "temperature": false,
-//	       "targetCurrencies": ["EUR", "SEK"]
-//	   }
+//	    "features": {
+//	        "temperature": false,
+//	        "targetCurrencies": ["EUR", "SEK"]
+//	    }
 //	}
+//
+// Example Response:
+//
+//	Success (204 No Content):
+//	  HTTP/1.1 204 No Content
+//
+//	Error (400 Bad Request):
+//	  HTTP/1.1 400 Bad Request
+//	  {
+//	      "error": "Invalid JSON payload: <error details>"
+//	  }
+//
+//	Error (404 Not Found):
+//	  HTTP/1.1 404 Not Found
+//	  {
+//	      "error": "Configuration not found"
+//	  }
 func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
-	log.Println("Processing PATCH request for dashboard configuration")
-
 	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
 
@@ -456,8 +471,9 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 
 	// Reference to the specific document
 	docRef := firebase.Client.Collection(collection).Doc(id)
+	log.Printf("Patching configuration with ID: %s", id)
 
-	// Check if document exists
+	// Check if the document exists
 	doc, err := docRef.Get(firebase.Ctx)
 	if err != nil {
 		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
@@ -468,25 +484,33 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	// Decode the request body into a map for partial updates
-	var updates map[string]interface{}
-	if err := json.NewDecoder(request.Body).Decode(&updates); err != nil {
+	// Decode the request body into the UserUpdateRequest struct for partial updates
+	var inputJSON consts.UserUpdateRequest
+	if err := json.NewDecoder(request.Body).Decode(&inputJSON); err != nil {
 		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Add the updated timestamp
-	timeNow := time.Now().Format(time.RFC3339)
-	updates["TimeChanged"] = timeNow
+	// Prepare the updates based on the struct fields using reflection
+	var updates []firestore.Update
+	val := reflect.ValueOf(inputJSON.Features)
+	typ := reflect.TypeOf(inputJSON.Features)
 
-	// Convert updates map to Firestore-compatible updates
-	firestoreUpdates := convertMapToFirestoreUpdates(updates, "")
+	// Iterate through the fields of the Features struct
+	for i := 0; i < val.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i).Interface()
+		// Only add to the update if the value is not nil
+		if value != nil {
+			updates = append(updates, firestore.Update{Path: "Features." + field.Name, Value: value})
+		}
+	}
 
-	// Log the updates for debugging
-	log.Printf("Updating document with the following changes: %v", firestoreUpdates)
+	// Add the lastChange timestamp
+	updates = append(updates, firestore.Update{Path: "TimeChanged", Value: time.Now().Format(time.RFC3339)})
 
-	// Update the document in Firestore
-	_, err = docRef.Update(firebase.Ctx, firestoreUpdates)
+	// Perform the update
+	_, err = docRef.Update(firebase.Ctx, updates)
 	if err != nil {
 		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -495,33 +519,4 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 	// Return 204 No Content on successful update
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully patched configuration with ID: %s", id)
-}
-
-// convertMapToFirestoreUpdates converts a nested map of updates into a slice of Firestore Update structs.
-func convertMapToFirestoreUpdates(updates map[string]interface{}, parentPath string) []firestore.Update {
-	var firestoreUpdates []firestore.Update
-
-	for key, value := range updates {
-		// If the key is "features", make sure it's capitalized to "Features"
-		if key == "features" {
-			key = "Features"
-		}
-
-		currentPath := key
-		if parentPath != "" {
-			currentPath = parentPath + "." + key
-		}
-
-		if nestedMap, ok := value.(map[string]interface{}); ok {
-			// Recursively handle nested maps
-			firestoreUpdates = append(firestoreUpdates, convertMapToFirestoreUpdates(nestedMap, currentPath)...)
-		} else {
-			// Add the update directly
-			firestoreUpdates = append(firestoreUpdates, firestore.Update{
-				Path:  currentPath,
-				Value: value,
-			})
-		}
-	}
-	return firestoreUpdates
 }
