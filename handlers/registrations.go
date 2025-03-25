@@ -38,8 +38,7 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodDelete:
 		deleteDashboardConfiguration(writer, request)
 	default:
-		log.Printf("Unsupported request method: %s", request.Method)
-		http.Error(writer, "Unsupported request method "+request.Method, http.StatusMethodNotAllowed)
+		sendErrorResponse(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
 		return
 	}
 }
