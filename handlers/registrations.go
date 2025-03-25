@@ -220,7 +220,6 @@ func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
 	return content, nil
 }
 
-// TODO: Implement the replaceDashboardConfiguration function. Issue #8
 // replaceDashboardConfiguration handles HTTP PUT requests to replace an existing dashboard configuration in Firestore.
 //
 // This function performs the following steps:
