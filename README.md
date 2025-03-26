@@ -15,9 +15,9 @@ The project is part of a group assignment where we will implement state manageme
 - [Deployment](#deployment)
 - [API Endpoints](#api-endpoints)
   - [Endpoint 'Registrations': Registering dashboard configuration](#endpoint-registrations-registering-dashboard-configuration)
-  - [/dashboard/v1/dashboards/](#dashboardv1dashboards)
-  - [/dashboard/v1/notifications/](#dashboardv1notifications)
-  - [/dashboard/v1/status/](#dashboardv1status)
+  - [Endpoint 'Dashboards': Retrieve populated dashboard](#endpoint-dashboards-retrieve-populated-dashboard)
+  - [Endpoint 'Notifications': Managing webhooks for event notifications](#endpoint-notifications-managing-webhooks-for-event-notifications)
+  - [Endpoint 'Status': Monitoring service availability](#endpoint-status-monitoring-service-availability)
 - [Contributors](#contributors)
   
 ## Features
@@ -307,11 +307,11 @@ This is the response to the delete request.
 - Status code: Appropriate error code. Ensure to deal with errors gracefully.
 - Body: empty
 
-### /dashboard/v1/dashboards/
+### Endpoint 'Dashboards': Retrieve populated dashboard
 
-### /dashboard/v1/notifications/
+### Endpoint 'Notifications': Managing webhooks for event notifications
 
-### /dashboard/v1/status/
+### Endpoint 'Status': Monitoring service availability
 
 ## Contributors
 This project was developed by:
