@@ -15,12 +15,14 @@ import (
 func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 
+	// Extract and validate ID
 	id := request.URL.Query().Get("id")
 	if id == "" {
 		http.Error(writer, "Missing 'id' in URL parameters", http.StatusBadRequest)
 		return
 	}
 
+	// Fetch configuration from Firestore
 	config, err := getDashboardConfigFromDB(id)
 	if err != nil {
 		http.Error(writer, "Failed to retrieve dashboard configuration from database", http.StatusInternalServerError)
@@ -28,6 +30,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	// Initialize response
 	response := map[string]interface{}{
 		"country":       config.Country,
 		"isoCode":       config.IsoCode,
@@ -36,25 +39,42 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	}
 	features := response["features"].(map[string]interface{})
 
+	// Fetch country data
 	countryData := fetchCountryData(config.Country)
 	if countryData == nil {
 		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
 		return
 	}
 
-	// Process each feature
+	// Process country-related features
+	populateCountryFeatures(features, config, countryData)
+
+	// Process weather-related features
+	populateWeatherFeatures(features, config, countryData)
+
+	// Process currency-related features
+	if config.Features.TargetCurrencies != nil && len(*config.Features.TargetCurrencies) > 0 {
+		fetchCurrencyData(features, countryData, *config.Features.TargetCurrencies)
+	}
+
+	// Encode and send response
+	if err := json.NewEncoder(writer).Encode(response); err != nil {
+		http.Error(writer, "Failed to encode response as JSON", http.StatusInternalServerError)
+		log.Println("Error encoding response:", err)
+	}
+}
+
+// populateCountryFeatures populates country-related features (capital, coordinates, population, area).
+func populateCountryFeatures(features map[string]interface{}, config *consts.RegistrationRequestBody, countryData map[string]interface{}) {
 	if config.Features.Capital != nil && *config.Features.Capital {
 		if capital, ok := extractCapital(countryData); ok {
 			features["capital"] = capital
 		}
 	}
 
-	var latitude, longitude float64
 	if config.Features.Coordinates != nil && *config.Features.Coordinates {
 		if coordinates, ok := extractCoordinates(countryData); ok {
 			features["coordinates"] = coordinates
-			latitude = coordinates["latitude"].(float64)
-			longitude = coordinates["longitude"].(float64)
 		}
 	}
 
@@ -69,23 +89,27 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 			features["area"] = area
 		}
 	}
+}
 
-	// Fetch Weather Data (Temperature & Precipitation)
-	if (config.Features.Temperature != nil && *config.Features.Temperature ||
-		config.Features.Precipitation != nil && *config.Features.Precipitation) &&
-		latitude != 0 && longitude != 0 {
+// populateWeatherFeatures populates weather-related features (temperature, precipitation).
+func populateWeatherFeatures(features map[string]interface{}, config *consts.RegistrationRequestBody, countryData map[string]interface{}) {
+	// Check if weather data is needed
+	needWeather := (config.Features.Temperature != nil && *config.Features.Temperature) ||
+		(config.Features.Precipitation != nil && *config.Features.Precipitation)
+	if !needWeather {
+		return
+	}
 
+	// Extract coordinates for weather data
+	var latitude, longitude float64
+	if coordinates, ok := extractCoordinates(countryData); ok {
+		latitude = coordinates["latitude"].(float64)
+		longitude = coordinates["longitude"].(float64)
+	}
+
+	// Fetch weather data if coordinates are available
+	if latitude != 0 && longitude != 0 {
 		fetchWeatherData(features, latitude, longitude, config)
-	}
-
-	// Fetch Currency Data
-	if config.Features.TargetCurrencies != nil && len(*config.Features.TargetCurrencies) > 0 {
-		fetchCurrencyData(features, countryData, *config.Features.TargetCurrencies)
-	}
-
-	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		http.Error(writer, "Failed to encode response as JSON", http.StatusInternalServerError)
-		log.Println("Error encoding response:", err)
 	}
 }
 
@@ -138,7 +162,6 @@ func fetchWeatherData(features map[string]interface{}, lat, lon float64, config 
 	}
 }
 
-// fetchCurrencyData fetches currency exchange rates from Currency API
 // fetchCurrencyData fetches currency exchange rates from Currency API
 func fetchCurrencyData(features map[string]interface{}, countryData map[string]interface{}, targetCurrencies []string) {
 	currencyCode := extractCurrencyCode(countryData)
@@ -236,16 +259,4 @@ func calculateAverage(data []interface{}) float64 {
 		return 0
 	}
 	return sum / float64(len(data))
-}
-
-// joinCurrencies concatenates a slice of currency codes into a comma-separated string
-func joinCurrencies(currencies []string) string {
-	result := ""
-	for i, currency := range currencies {
-		if i > 0 {
-			result += ","
-		}
-		result += currency
-	}
-	return result
 }
