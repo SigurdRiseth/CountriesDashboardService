@@ -4,6 +4,8 @@ import (
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/firebase"
 	"encoding/json"
+	"errors"
+	"google.golang.org/api/iterator"
 	"log"
 	"net/http"
 	"time"
@@ -69,7 +71,7 @@ func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 		LastChange: timeNow,
 	}
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		log.Printf("Error encoding JSON response: %v", err)
+		sendErrorResponse(writer, "Error encoding JSON response: "+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -123,7 +125,87 @@ func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
 	log.Printf("Successfully deleted configuration with ID: %s", id)
 }
 
+// retrieveWebhook handles the retrieval of webhook configurations.
+// It checks if an ID is provided in the URL query parameters and calls
+// the appropriate function to either retrieve a specific webhook or all webhooks.
+//
+// Parameters:
+// - writer: http.ResponseWriter to write the response
+// - request: *http.Request containing the request data
 func retrieveWebhook(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusOK)
-	writer.Write([]byte("Service not implemented"))
+	id := request.URL.Query().Get("id")
+
+	if id == "" {
+		retrieveSpecificWebhook(writer, request, id)
+	} else {
+		retrieveAllWebhooks(writer, request)
+	}
+}
+
+// retrieveSpecificWebhook handles the retrieval of a specific webhook configuration.
+// It retrieves the document from Firestore based on the provided ID, converts it to
+// a WebhookRegistration struct, and sends it as a JSON response.
+//
+// Parameters:
+// - writer: http.ResponseWriter to write the response
+// - request: *http.Request containing the request data
+// - id: string representing the Firestore document ID
+func retrieveSpecificWebhook(writer http.ResponseWriter, request *http.Request, id string) {
+	// Retrieve specific message based on id (Firestore-generated hash)
+	res := firebase.Client.Collection(notificationsCollection).Doc(id)
+
+	// Retrieve reference to document
+	doc, err := res.Get(firebase.Ctx)
+	if err != nil {
+		sendErrorResponse(writer, "Error extracting body of returned document of message "+id, http.StatusInternalServerError)
+		return
+	}
+
+	var content consts.WebhookRegistration
+	if err := doc.DataTo(&content); err != nil {
+		sendErrorResponse(writer, "Error converting document data to struct.", http.StatusInternalServerError)
+		return
+	}
+
+	// Send response
+	writer.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(writer).Encode(content); err != nil {
+		sendErrorResponse(writer, "Error encoding JSON response.", http.StatusInternalServerError)
+	}
+}
+
+// retrieveAllWebhooks handles the retrieval of all webhook configurations.
+// It iterates over all documents in the Firestore collection, converts them
+// to WebhookRegistration structs, and sends them as a JSON response.
+//
+// Parameters:
+// - writer: http.ResponseWriter to write the response
+// - request: *http.Request containing the request data
+func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
+	// Retrieve all messages
+	iter := firebase.Client.Collection(notificationsCollection).Documents(firebase.Ctx)
+
+	// Prepare a slice to hold all messages
+	var messages []consts.WebhookRegistration
+
+	for doc, err := iter.Next(); !errors.Is(err, iterator.Done); doc, err = iter.Next() {
+		if err != nil {
+			sendErrorResponse(writer, "Error iterating Firestore documents.", http.StatusInternalServerError)
+			return
+		}
+
+		var item consts.WebhookRegistration
+		if err := doc.DataTo(&item); err != nil {
+			sendErrorResponse(writer, "Error converting document data to struct.", http.StatusInternalServerError)
+			return
+		}
+
+		messages = append(messages, item)
+	}
+
+	// Send response
+	writer.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(writer).Encode(messages); err != nil {
+		sendErrorResponse(writer, "Error encoding JSON response.", http.StatusInternalServerError)
+	}
 }
