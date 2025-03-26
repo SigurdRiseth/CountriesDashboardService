@@ -25,3 +25,10 @@ type RegistrationRequestResponse struct {
 	Id         string `json:"id"`
 	LastChange string `json:"lastChange"`
 }
+
+type WebhookRegistration struct {
+	Url         string `json:"url"`
+	Country     string `json:"country"`
+	Event       string `json:"event"`
+	TimeChanged string `json:"timeChanged"`
+}
