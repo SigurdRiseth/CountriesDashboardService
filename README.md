@@ -14,10 +14,10 @@ The project is part of a group assignment where we will implement state manageme
 - [Setup](#setup)
 - [Deployment](#deployment)
 - [API Endpoints](#api-endpoints)
-  - [Endpoint 'Registrations': Registering dashboard configuration](#endpoint-registrations-registering-dashboard-configuration)
-  - [Endpoint 'Dashboards': Retrieve populated dashboard](#endpoint-dashboards-retrieve-populated-dashboard)
-  - [Endpoint 'Notifications': Managing webhooks for event notifications](#endpoint-notifications-managing-webhooks-for-event-notifications)
-  - [Endpoint 'Status': Monitoring service availability](#endpoint-status-monitoring-service-availability)
+  - [Registrations: Registering dashboard configuration](#registrations-registering-dashboard-configuration)
+  - [Dashboards: Retrieve populated dashboard](#dashboards-retrieve-populated-dashboard)
+  - [Notifications: Managing webhooks for event notifications](#notifications-managing-webhooks-for-event-notifications)
+  - [Status: Monitoring service availability](#status-monitoring-service-availability)
 - [Contributors](#contributors)
   
 ## Features
@@ -85,7 +85,7 @@ The application will be initially developed and tested locally, followed by depl
 
 ## API Endpoints
 
-### Endpoint 'Registrations': Registering dashboard configuration
+### Registrations: Registering dashboard configuration
 
 The initial endpoint focuses on the management of dashboard configurations that can later be used via the `dashboards` endpoint.
 
@@ -307,11 +307,11 @@ This is the response to the delete request.
 - Status code: Appropriate error code. Ensure to deal with errors gracefully.
 - Body: empty
 
-### Endpoint 'Dashboards': Retrieve populated dashboard
+### Dashboards: Retrieve populated dashboard
 
-### Endpoint 'Notifications': Managing webhooks for event notifications
+### Notifications: Managing webhooks for event notifications
 
-### Endpoint 'Status': Monitoring service availability
+### Status: Monitoring service availability
 
 ## Contributors
 This project was developed by:
