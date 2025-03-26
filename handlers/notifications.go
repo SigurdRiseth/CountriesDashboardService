@@ -135,7 +135,7 @@ func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
 func retrieveWebhook(writer http.ResponseWriter, request *http.Request) {
 	id := request.URL.Query().Get("id")
 
-	if id == "" {
+	if id != "" {
 		retrieveSpecificWebhook(writer, request, id)
 	} else {
 		retrieveAllWebhooks(writer, request)
