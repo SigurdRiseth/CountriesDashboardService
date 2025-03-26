@@ -73,6 +73,14 @@ func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
+// deleteWebhook handles the deletion of a webhook configuration.
+// It extracts the ID from the URL path, validates it, checks if the document exists,
+// and attempts to delete it from Firestore. It sends appropriate HTTP responses
+// based on the outcome.
+//
+// Parameters:
+// - writer: http.ResponseWriter to write the response
+// - request: *http.Request containing the request data
 func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
 	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
