@@ -4,7 +4,7 @@ import (
 	"CountriesDashboardService/consts"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -193,7 +193,11 @@ func fetchCountryData(countryName string) map[string]interface{} {
 		log.Println("Error fetching country data:", err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Println("Error closing response body:", err)
+		}
+	}()
 
 	var data []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data) == 0 {
@@ -225,9 +229,13 @@ func fetchWeatherData(features map[string]interface{}, lat, lon float64, config 
 		log.Println("Error fetching weather data:", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Println("Error closing response body:", err)
+		}
+	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	var weatherData map[string]interface{}
 	if err := json.Unmarshal(body, &weatherData); err != nil {
 		log.Println("Error decoding weather data:", err)
@@ -275,9 +283,13 @@ func fetchCurrencyData(features map[string]interface{}, countryData map[string]i
 		log.Println("Error fetching currency data:", err)
 		return
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			log.Println("Error closing response body:", err)
+		}
+	}()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	body, _ := io.ReadAll(resp.Body)
 	log.Printf("Currency API Raw Response: %s", string(body)) // Log the raw response for debugging
 
 	var currencyData map[string]interface{}
