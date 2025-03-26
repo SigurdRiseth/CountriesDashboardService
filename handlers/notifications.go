@@ -73,9 +73,54 @@ func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
+// deleteWebhook handles the deletion of a webhook configuration.
+// It extracts the ID from the URL path, validates it, checks if the document exists,
+// and attempts to delete it from Firestore. It sends appropriate HTTP responses
+// based on the outcome.
+//
+// Parameters:
+// - writer: http.ResponseWriter to write the response
+// - request: *http.Request containing the request data
 func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
-	writer.WriteHeader(http.StatusOK)
-	writer.Write([]byte("Service not implemented"))
+	// Extract the ID from the URL path
+	id := request.URL.Query().Get("id")
+
+	// Validate the ID
+	if id == "" {
+		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
+		return
+	}
+
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(notificationsCollection).Doc(id)
+
+	// Check if document exists first (to distinguish between not-found and other errors)
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		// Firestore returns a generic error for not found
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Attempt to delete the document
+	if _, err := docRef.Delete(firebase.Ctx); err != nil {
+		sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 No Content on successful deletion
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully deleted configuration with ID: %s", id)
 }
 
 func retrieveWebhook(writer http.ResponseWriter, request *http.Request) {
