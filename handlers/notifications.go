@@ -3,12 +3,24 @@ package handlers
 import (
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/firebase"
+	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"google.golang.org/api/iterator"
+	"io"
 	"log"
 	"net/http"
 	"time"
+)
+
+// Constants (assumed to be declared elsewhere)
+var (
+	Secret       = []byte("your-secret-key")
+	SignatureKey = "X-Signature"
+	maxRetries   = 3
 )
 
 // Collection name in Firestore
@@ -208,4 +220,79 @@ func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
 	if err := json.NewEncoder(writer).Encode(messages); err != nil {
 		sendErrorResponse(writer, "Error encoding JSON response.", http.StatusInternalServerError)
 	}
+}
+
+// CallUrl sends an HTTP POST request with event and content, using HMAC validation.
+//
+// Parameters:
+// - url: The URL to which the HTTP POST request is sent.
+// - event: The event type to be included in the payload.
+// - content: The content to be included in the payload.
+func CallUrl(url, event, content string) {
+	log.Printf("Attempting invocation of URL %s with event '%s' and content: '%s'.", url, event, content)
+
+	// Create the JSON payload
+	payload := consts.WebhookPayload{
+		Event:   event,
+		Content: content,
+	}
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("Error marshalling payload: %v", err)
+		return
+	}
+
+	// Create the HTTP POST request
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payloadBytes))
+	if err != nil {
+		log.Printf("Error creating HTTP request: %v", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// HMAC signature generation
+	mac := hmac.New(sha256.New, Secret)
+	_, err = mac.Write([]byte(content))
+	if err != nil {
+		log.Printf("Error during content hashing: %v", err)
+		return
+	}
+	req.Header.Set(SignatureKey, hex.EncodeToString(mac.Sum(nil)))
+
+	// Perform the HTTP POST request with retry logic
+	client := &http.Client{Timeout: 5 * time.Second}
+	for retry := 0; retry < maxRetries; retry++ {
+		res, err := client.Do(req)
+		if err != nil {
+			log.Printf("HTTP request failed (attempt %d/%d): %v", retry+1, maxRetries, err)
+			time.Sleep(time.Duration(retry) * time.Second) // Exponential backoff
+			continue
+		}
+
+		defer res.Body.Close()
+
+		// Read the response body
+		responseBody, err := io.ReadAll(res.Body)
+		if err != nil {
+			log.Printf("Error reading response body: %v", err)
+			return
+		}
+
+		log.Printf("Webhook %s invoked. Received status code %d and body: %s", url, res.StatusCode, string(responseBody))
+
+		// Check for HTTP errors and decide whether to retry
+		if res.StatusCode >= 200 && res.StatusCode < 300 {
+			log.Printf("Successfully invoked webhook %s with status code %d", url, res.StatusCode)
+			return
+		} else {
+			log.Printf("Non-2xx status code received: %d", res.StatusCode)
+			if retry == maxRetries-1 {
+				log.Printf("Max retries reached. Failed to invoke webhook %s.", url)
+				return
+			}
+			time.Sleep(time.Duration(retry+1) * time.Second) // Exponential backoff before retry
+		}
+	}
+
+	log.Println("Webhook invocation failed after retries.")
 }

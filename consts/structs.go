@@ -32,3 +32,9 @@ type WebhookRegistration struct {
 	Event       string `json:"event"`
 	TimeChanged string `json:"timeChanged"`
 }
+
+// WebhookPayload represents the JSON structure of the request body
+type WebhookPayload struct {
+	Event   string `json:"event"`
+	Content string `json:"content"`
+}
