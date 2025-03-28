@@ -23,8 +23,9 @@ func main() {
 	// Register the routes
 	router.HandleFunc("/", handlers.Home)
 	router.HandleFunc("/dashboard/v1/registrations/", handlers.HandleRegistrations)
+	router.HandleFunc("/dashboard/v1/notifications/", handlers.HandleNotifications)
 	router.HandleFunc("/dashboard/v1/dashboards/", handlers.ViewDashboard)
-
+  
 	// Log a message indicating the server has started
 	log.Println("Server started on port " + port)
 	log.Fatal(http.ListenAndServe(":"+port, router))

@@ -15,7 +15,7 @@ import (
 )
 
 // Collection name in Firestore
-const collection = "registrations"
+const registrationsCollection = "registrations"
 
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
@@ -53,7 +53,7 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 // 1. Sets the "Content-Type" header of the response to "application/json".
 // 2. Decodes the incoming JSON payload into a `RegistrationRequestBody` struct.
 // 3. Adds the current timestamp to the `TimeChanged` field of the decoded struct.
-// 4. Writes the decoded and timestamped struct to the Firestore collection defined by the `collection` constant.
+// 4. Writes the decoded and timestamped struct to the Firestore registrationsCollection defined by the `registrationsCollection` constant.
 // 5. Returns a JSON response containing the document ID and timestamp if the Firestore operation is successful.
 //
 // Parameters:
@@ -107,12 +107,12 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	}
 
 	// Write the document to Firestore
-	id, _, err := firebase.Client.Collection(collection).Add(firebase.Ctx, content)
+	id, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, content)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Document added to collection. Identifier of returned document: " + id.ID)
+	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id.ID)
 
 	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
@@ -161,7 +161,7 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 //   - error: An error object if an error occurred during retrieval, otherwise nil.
 func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error) {
 	// Retrieve specific message based on id (Firestore-generated hash)
-	res := firebase.Client.Collection(collection).Doc(id)
+	res := firebase.Client.Collection(registrationsCollection).Doc(id)
 
 	// Retrieve reference to document
 	doc, err := res.Get(firebase.Ctx)
@@ -179,7 +179,7 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 	return &content, nil
 }
 
-// getAllDashboardConfigsFromDB retrieves all dashboard configurations from the Firestore collection.
+// getAllDashboardConfigsFromDB retrieves all dashboard configurations from the Firestore registrationsCollection.
 // It returns a slice of RegistrationRequestBody structs or an error if something goes wrong during the process.
 //
 // Query Details:
@@ -199,7 +199,7 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 //	}
 //	fmt.Printf("Retrieved %d configurations.\n", len(configs))
 func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
-	iter := firebase.Client.Collection(collection).Limit(100).OrderBy("TimeChanged", firestore.Asc).Documents(firebase.Ctx)
+	iter := firebase.Client.Collection(registrationsCollection).Limit(100).OrderBy("TimeChanged", firestore.Asc).Documents(firebase.Ctx)
 
 	var content []consts.RegistrationRequestBody
 	for doc, err := iter.Next(); !errors.Is(err, iterator.Done); doc, err = iter.Next() {
@@ -295,7 +295,7 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 	}
 
 	// Reference to the specific document
-	docRef := firebase.Client.Collection(collection).Doc(id)
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
 
 	// Check if document exists first
 	doc, err := docRef.Get(firebase.Ctx)
@@ -366,7 +366,7 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	}
 
 	// Reference to the specific document
-	docRef := firebase.Client.Collection(collection).Doc(id)
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
 
 	// Check if document exists first (to distinguish between not-found and other errors)
 	doc, err := docRef.Get(firebase.Ctx)
@@ -396,7 +396,7 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 // This function performs the following steps:
 //  1. Extracts the configuration ID from the URL query parameters.
 //  2. If an ID is provided, retrieves the specific dashboard configuration and marshals it to JSON to calculate its size.
-//  3. If no ID is provided, retrieves all dashboard configurations and marshals the collection to JSON to calculate the total size.
+//  3. If no ID is provided, retrieves all dashboard configurations and marshals the registrationsCollection to JSON to calculate the total size.
 //  4. Sets the "Content-Type" and "Content-Length" headers in the response.
 //  5. Returns a 200 OK status with no body to indicate the size of the data.
 //
@@ -520,7 +520,7 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Reference to the specific document
-	docRef := firebase.Client.Collection(collection).Doc(id)
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
 	log.Printf("Patching configuration with ID: %s", id)
 
 	// Check if the document exists
