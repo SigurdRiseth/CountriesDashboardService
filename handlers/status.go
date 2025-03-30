@@ -73,7 +73,7 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 	// Check availability of dependent services
 	status["countries_api"] = checkServiceAvailability(fmt.Sprintf("%s/name/unknown", consts.RestCountriesAPI))
 	status["meteo_api"] = checkServiceAvailability(consts.OpenMeteoAPI + "?latitude=0&longitude=0&hourly=temperature_2m")
-	status["currency_api"] = checkServiceAvailability(consts.CurrencyAPI)
+	status["currency_api"] = checkServiceAvailability(fmt.Sprintf("%s/NOK", consts.CurrencyAPI))
 	status["notification_db"] = checkNotificationDB()
 
 	// Count registered webhooks
@@ -92,43 +92,48 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-// checkServiceAvailability sends a HEAD request to the given URL and returns the HTTP status code.
+// checkServiceAvailability checks the availability of a given external service URL.
 //
-// It performs a lightweight HEAD request to minimize data transfer and checks the availability of
-// the service at the specified URL. If the request fails, it returns a 503 Service Unavailable status.
+// It automatically selects the appropriate HTTP method based on the service type:
+//   - If the URL appears to be for the Currency API (contains "/currency/"), a GET request is used.
+//   - For all other URLs, a lightweight HEAD request is used to minimize data transfer.
+//
+// The function returns the HTTP status code from the response. If the request fails or
+// the service is unreachable, it returns 503 (Service Unavailable).
 //
 // Parameters:
-//   - url: The URL of the service to check (e.g., an API endpoint).
+//   - url: The full URL of the service to check.
 //
 // Returns:
-//   - The HTTP status code returned by the service, or 503 if the request fails.
-func checkServiceAvailability(url string, isCurrencyAPI bool) int {
-	// If it's the Currency API, we must use a GET request
-	if isCurrencyAPI {
-		resp, err := http.Get(url)
-		if err != nil {
-			log.Printf("Error checking Currency API availability for %s: %v", url, err)
-			return http.StatusServiceUnavailable // 503 if the service is unreachable
-		}
-		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				log.Println("Error closing Currency API response body:", err)
-			}
-		}()
-		return resp.StatusCode
+//   - int: The HTTP status code returned by the service, or 503 if the request fails.
+func checkServiceAvailability(url string) int {
+	// Use GET if the URL is for the Currency API (based on path pattern)
+	isCurrencyAPI := false
+	urlContainsCurrency := "/currency/"
+
+	if len(url) > 0 && urlContainsCurrency != "" && utils.Contains(url, urlContainsCurrency) {
+		isCurrencyAPI = true
 	}
 
-	// For all other services, use a HEAD request
-	resp, err := http.Head(url)
+	var resp *http.Response
+	var err error
+
+	if isCurrencyAPI {
+		resp, err = http.Get(url)
+	} else {
+		resp, err = http.Head(url)
+	}
+
 	if err != nil {
 		log.Printf("Error checking service availability for %s: %v", url, err)
-		return http.StatusServiceUnavailable // 503 if the service is unreachable
+		return http.StatusServiceUnavailable
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Println("Error closing service availability response body:", err)
+			log.Println("Error closing response body for", url, ":", err)
 		}
 	}()
+
 	return resp.StatusCode
 }
 
