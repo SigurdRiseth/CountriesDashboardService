@@ -26,7 +26,7 @@ func HandleStatus(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodGet:
 		handleGetStatus(writer, request)
 	default:
-		sendErrorResponse(writer, "Method not allowed", http.StatusMethodNotAllowed)
+		sendErrorResponseStatus(writer, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -195,11 +195,11 @@ func countWebhooks() (int64, error) {
 //   - writer: The http.ResponseWriter to write the response to.
 //   - message: The error message to include in the response.
 //   - statusCode: The HTTP status code to use for the response.
-//func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
-//	writer.Header().Set("Content-Type", "application/json")
-//	writer.WriteHeader(statusCode)
-//	response := map[string]string{"error": message}
-//	if err := json.NewEncoder(writer).Encode(response); err != nil {
-//		log.Printf("Error encoding error response: %v", err)
-//	}
-//}
+func sendErrorResponseStatus(writer http.ResponseWriter, message string, statusCode int) {
+	writer.Header().Set("Content-Type", "application/json")
+	writer.WriteHeader(statusCode)
+	response := map[string]string{"error": message}
+	if err := json.NewEncoder(writer).Encode(response); err != nil {
+		log.Printf("Error encoding error response: %v", err)
+	}
+}
