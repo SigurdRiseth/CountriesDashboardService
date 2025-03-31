@@ -8,6 +8,9 @@ import (
 	"log"
 )
 
+// Add this line below your imports in firebase.go
+const NotificationsCollection = "notifications"
+
 // Firebase context and client used by Firestore functions throughout the program.
 var (
 	Ctx    context.Context
