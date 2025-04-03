@@ -1,1 +1,40 @@
 package handlers
+
+import (
+	"CountriesDashboardService/consts"
+	"CountriesDashboardService/tests/testutils"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+// TestStatusWithMockedServices tests the status handler with mocked external services
+func TestStatusWithMockedServices(t *testing.T) {
+	// Start mock servers
+	countriesMock := testutils.MockCountriesAPI()
+	defer countriesMock.Close()
+
+	meteoMock := testutils.MockMeteoAPI()
+	defer meteoMock.Close()
+
+	currencyMock := testutils.MockCurrencyAPI()
+	defer currencyMock.Close()
+
+	// Override API endpoints
+	consts.RestCountriesAPI = countriesMock.URL
+	consts.OpenMeteoAPI = meteoMock.URL
+	consts.CurrencyAPI = currencyMock.URL
+
+	// Make test request
+	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/status/", nil)
+	rr := httptest.NewRecorder()
+
+	handleGetStatus(rr, req)
+
+	// Check status code
+	if rr.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", rr.Code)
+	}
+
+	t.Logf("Response: %s", rr.Body.String())
+}
