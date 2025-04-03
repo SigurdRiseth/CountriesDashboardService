@@ -60,7 +60,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Fetch configuration from Firestore
-	config, err := getDashboardConfigFromDB(id)
+	config, err := GetDashboardConfigFromDBFunc(id)
 	if err != nil {
 		http.Error(writer, "Failed to retrieve dashboard configuration from database", http.StatusInternalServerError)
 		log.Println("Error retrieving configuration:", err)
