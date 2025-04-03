@@ -21,9 +21,9 @@ func TestStatusWithMockedServices(t *testing.T) {
 	defer currencyMock.Close()
 
 	// Override API endpoints
-	consts.RestCountriesAPI = countriesMock.URL
-	consts.OpenMeteoAPI = meteoMock.URL
-	consts.CurrencyAPI = currencyMock.URL
+	consts.RestCountriesAPITest = countriesMock.URL
+	consts.OpenMeteoAPITest = meteoMock.URL
+	consts.CurrencyAPITest = currencyMock.URL
 
 	// Mock the firebase functions
 	CountWebhooksFunc = func() (int64, error) {

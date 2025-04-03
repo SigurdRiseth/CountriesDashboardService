@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// Func to override in tests
+var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
+
 // ViewDashboard handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
 // It fetches the dashboard configuration for the given ID, populates the requested features (e.g., country data,
 // weather data, currency exchange rates), and returns the result as a JSON response.
