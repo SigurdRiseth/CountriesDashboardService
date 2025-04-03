@@ -22,6 +22,20 @@ The project is part of a group assignment where we will implement state manageme
   
 ## Features
 
+### Units Used in Dashboard Responses
+
+When retrieving dashboard data via `/dashboard/v1/dashboards/{id}`, the values for certain features are presented in specific units:
+
+| Feature          | Unit                      |
+|------------------|---------------------------|
+| `temperature`     | Degrees Celsius (°C)      |
+| `precipitation`   | Millimeters (mm)          |
+| `area`            | Square kilometers (km²)   |
+| `population`      | Number of people          |
+| `targetCurrencies`| Exchange rate (1 base currency → target currency) |
+
+All timestamps such as `lastRetrieval` follow the **RFC3339** format, e.g., `"2025-04-03T10:15:00+01:00"`.
+
 ### External APIs
 
 The services used in this application are:
