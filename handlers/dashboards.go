@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// Func to override in tests
+var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
+
 // ViewDashboard handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
 // It fetches the dashboard configuration for the given ID, populates the requested features (e.g., country data,
 // weather data, currency exchange rates), and returns the result as a JSON response.
@@ -57,7 +60,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Fetch configuration from Firestore
-	config, err := getDashboardConfigFromDB(id)
+	config, err := GetDashboardConfigFromDBFunc(id)
 	if err != nil {
 		http.Error(writer, "Failed to retrieve dashboard configuration from database", http.StatusInternalServerError)
 		log.Println("Error retrieving configuration:", err)
