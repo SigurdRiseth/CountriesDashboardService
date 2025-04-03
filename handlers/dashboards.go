@@ -69,7 +69,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		"country":       config.Country,
 		"isoCode":       config.IsoCode,
 		"features":      make(map[string]interface{}),
-		"lastRetrieval": time.Now().Format("20060102 15:04"),
+		"lastRetrieval": time.Now().Format(time.RFC3339),
 	}
 	features := response["features"].(map[string]interface{})
 
