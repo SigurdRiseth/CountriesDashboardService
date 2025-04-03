@@ -25,6 +25,16 @@ func TestStatusWithMockedServices(t *testing.T) {
 	consts.OpenMeteoAPI = meteoMock.URL
 	consts.CurrencyAPI = currencyMock.URL
 
+	// Mock the firebase functions
+	CountWebhooksFunc = func() (int64, error) {
+		return 5, nil // 5 as dummy value
+	}
+
+	// Mock notification DB check to return 200 OK
+	CheckNotificationDBFunc = func() int {
+		return http.StatusOK
+	}
+
 	// Make test request
 	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/status/", nil)
 	rr := httptest.NewRecorder()

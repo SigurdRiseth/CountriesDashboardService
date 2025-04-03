@@ -13,6 +13,9 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+var CountWebhooksFunc = countWebhooks
+var CheckNotificationDBFunc = checkNotificationDB
+
 // HandleStatus routes requests to the appropriate handler based on the HTTP method.
 //
 // It handles requests to the /dashboard/v1/status/ endpoint, supporting GET requests to retrieve
@@ -74,10 +77,10 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 	status["countries_api"] = checkServiceAvailability(fmt.Sprintf("%s/name/unknown", consts.RestCountriesAPI))
 	status["meteo_api"] = checkServiceAvailability(consts.OpenMeteoAPI + "?latitude=0&longitude=0&hourly=temperature_2m")
 	status["currency_api"] = checkServiceAvailability(fmt.Sprintf("%s/NOK", consts.CurrencyAPI))
-	status["notification_db"] = checkNotificationDB()
+	status["notification_db"] = CheckNotificationDBFunc()
 
 	// Count registered webhooks
-	webhookCount, err := countWebhooks()
+	webhookCount, err := CountWebhooksFunc()
 	if err != nil {
 		sendErrorResponse(writer, "Failed to count registered webhooks: "+err.Error(), http.StatusInternalServerError)
 		return
