@@ -13,7 +13,7 @@ var (
 	OpenMeteoAPITest     = "https://api.open-meteo.com/v1/forecast"
 	CurrencyAPITest      = "http://129.241.150.113:9090/currency"
 
-	// Mock endpoint path
-	MockDashboardEndpointWithTestID = "/dashboard/v1/dashboards/?id=test-id"
-	MockDashboardEndpointWithoutID  = "/dashboard/v1/dashboards/"
+	MockDashboardEndpointWithTestID    = "/dashboard/v1/dashboards/?id=test-id"
+	MockDashboardEndpointWithoutID     = "/dashboard/v1/dashboards/"
+	MockDashboardEndpointWithInvalidID = "/dashboard/v1/dashboards/?id=nonexistent"
 )

@@ -3,6 +3,7 @@ package handlers
 import (
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/utils"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -55,5 +56,24 @@ func TestViewDashboard_MissingID(t *testing.T) {
 
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Errorf("Expected 400 Bad Request, got %d", resp.StatusCode)
+	}
+}
+
+// TestViewDashboard_ValidID tests the ViewDashboard function with an invalid ID
+func TestViewDashboard_InvalidID(t *testing.T) {
+	GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
+		return nil, fmt.Errorf("dashboard not found")
+	}
+
+	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithInvalidID, nil)
+	rec := httptest.NewRecorder()
+
+	ViewDashboard(rec, req)
+
+	resp := rec.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 Internal Server Error, got %d", resp.StatusCode)
 	}
 }
