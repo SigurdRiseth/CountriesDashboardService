@@ -146,7 +146,7 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 
 	if id != "" {
 		log.Println("Retrieving single dashboard configuration with ID: " + id)
-		response, err = getDashboardConfigFromDB(id) // return a single dashboard configuration
+		response, err = GetDashboardConfigFromDBFunc(id) // return a single dashboard configuration
 	} else {
 		log.Println("Retrieving all dashboard configurations")
 		response, err = getAllDashboardConfigsFromDB() // return all dashboard configurations
@@ -435,7 +435,7 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 
 	if id != "" {
 		// Fetch a specific dashboard config by ID
-		doc, err2 := getDashboardConfigFromDB(id)
+		doc, err2 := GetDashboardConfigFromDBFunc(id)
 		if err2 != nil {
 			sendErrorResponse(writer, "Error fetching dashboard config: "+err2.Error(), http.StatusInternalServerError)
 			return

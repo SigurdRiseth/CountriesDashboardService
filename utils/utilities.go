@@ -16,3 +16,8 @@ func InitStartTime() {
 func Contains(s, substr string) bool {
 	return strings.Contains(s, substr)
 }
+
+// BoolPtr that returns a pointer to a boolean value.
+func BoolPtr(b bool) *bool {
+	return &b
+}
