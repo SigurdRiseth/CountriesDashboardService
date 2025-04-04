@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"CountriesDashboardService/consts"
+	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
-
-// Test POST request with valid payload → should return 201 Created with document ID and timestamp.
 
 func TestHandleRegistrations(t *testing.T) {
 	type args struct {
@@ -27,21 +28,47 @@ func TestHandleRegistrations(t *testing.T) {
 	}
 }
 
+// Test POST request with valid payload → should return 201 Created with document ID and timestamp.
 func Test_addDashboardConfiguration(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
+	reqBody := `{
+		"country": "Norway",
+		"isoCode": "NO",
+		"features": {
+			"capital": true,
+			"coordinates": true,
+			"population": true,
+			"area": true,
+			"temperature": true,
+			"precipitation": true,
+			"targetCurrencies": ["USD", "EUR"]
+		}
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/dashboard/v1/registrations/", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	addDashboardConfiguration(rec, req)
+
+	//Override Firestore call for isolation.
+	AddDashboardConfigToDBFunc = func(body consts.RegistrationRequestBody) (string, error) {
+		return "mock-id-123", nil
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
+
+	resp := rec.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("Expected status 201 Created, got %d", resp.StatusCode)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			addDashboardConfiguration(tt.args.writer, tt.args.request)
-		})
+
+	var jsonResponse map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&jsonResponse); err != nil {
+		t.Fatalf("Failed to decode JSON response: %v", err)
+	}
+
+	if jsonResponse["id"] == "" || jsonResponse["lastChange"] == "" {
+		t.Errorf("Expected 'id' and 'lastChange' in response, got: %+v", jsonResponse)
 	}
 }
 

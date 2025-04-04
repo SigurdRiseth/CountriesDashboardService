@@ -17,6 +17,8 @@ import (
 // Collection name in Firestore
 const registrationsCollection = "registrations"
 
+var AddDashboardConfigToDBFunc = addDashboardConfigurationToFirestore // Override for testing
+
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
 // - POST: Adds a new dashboard configuration.
@@ -107,21 +109,33 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	}
 
 	// Write the document to Firestore
-	id, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, content)
+	idstr, err := AddDashboardConfigToDBFunc(content)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id.ID)
+	log.Println("Document added to registrationsCollection. Identifier of returned document: " + idstr)
 
 	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
-		Id:         id.ID,
+		Id:         idstr,
 		LastChange: timeNow,
 	}
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}
+}
+
+// addDashboardConfigurationToFirestore adds a new dashboard configuration to Firestore.
+func addDashboardConfigurationToFirestore(body consts.RegistrationRequestBody) (string, error) {
+	if firebase.Client == nil {
+		return "", fmt.Errorf("firebase client is not initialized")
+	}
+	docRef, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, body)
+	if err != nil {
+		return "", err
+	}
+	return docRef.ID, nil
 }
 
 // TODO: Implement the viewDashboardConfiguration function. Issue #6-7
