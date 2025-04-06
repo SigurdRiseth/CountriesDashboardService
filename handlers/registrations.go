@@ -103,10 +103,10 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	content.TimeChanged = timeNow
 
 	// Check if Firebase client is initialized
-	if firebase.Client == nil {
-		sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
-		return
-	}
+	//if firebase.Client == nil {
+	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
+	//	return
+	//}
 
 	// Write the document to Firestore
 	idstr, err := AddDashboardConfigToDBFunc(content)
@@ -121,6 +121,7 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 		Id:         idstr,
 		LastChange: timeNow,
 	}
+	writer.WriteHeader(http.StatusCreated) // 201 Created
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}

@@ -44,16 +44,16 @@ func Test_addDashboardConfiguration(t *testing.T) {
 		}
 	}`
 
-	req := httptest.NewRequest(http.MethodPost, "/dashboard/v1/registrations/", strings.NewReader(reqBody))
+	req := httptest.NewRequest(http.MethodPost, consts.RegistrationEndpoint, strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
-
-	addDashboardConfiguration(rec, req)
 
 	//Override Firestore call for isolation.
 	AddDashboardConfigToDBFunc = func(body consts.RegistrationRequestBody) (string, error) {
 		return "mock-id-123", nil
 	}
+
+	addDashboardConfiguration(rec, req)
 
 	resp := rec.Result()
 	defer resp.Body.Close()
