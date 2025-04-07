@@ -10,10 +10,14 @@ import (
 	"time"
 )
 
-// GetDashboardConfigFromDBFunc is a function variable that can be overridden for testing purposes.
+// Stub-able function vars
 var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
 
-// ViewDashboardWithClient handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
+var FetchCountryDataFunc = fetchCountryData
+var FetchWeatherDataFunc = fetchWeatherData
+var FetchCurrencyDataFunc = fetchCurrencyData
+
+// ViewDashboard handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
 // It fetches the dashboard configuration for the given ID, populates the requested features (e.g., country data,
 // weather data, currency exchange rates), and returns the result as a JSON response.
 //
@@ -49,7 +53,7 @@ var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
 //	    },
 //	    "lastRetrieval": "20250325 14:00"
 //	}
-func ViewDashboardWithClient(writer http.ResponseWriter, request *http.Request) {
+func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 
 	// Extract and validate ID
@@ -79,6 +83,7 @@ func ViewDashboardWithClient(writer http.ResponseWriter, request *http.Request) 
 	// Fetch country data
 	countryData := fetchCountryData(config.Country)
 	if countryData == nil {
+		log.Println("Error retrieving country data")
 		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
 		return
 	}
