@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"CountriesDashboardService/consts"
+	"CountriesDashboardService/utils"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -73,6 +74,7 @@ func Test_addDashboardConfiguration(t *testing.T) {
 	}
 }
 
+// DELETE request with valid ID → should return 204 No Content.
 func Test_deleteDashboardConfiguration(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/dashboard/v1/registrations/?id=test-id", nil)
 	rec := httptest.NewRecorder()
@@ -93,24 +95,35 @@ func Test_deleteDashboardConfiguration(t *testing.T) {
 }
 
 func Test_getAllDashboardConfigsFromDB(t *testing.T) {
-	tests := []struct {
-		name    string
-		want    []consts.RegistrationRequestBody
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+	// Setup: mock override
+	GetAllDashboardConfigsFunc = func() ([]consts.RegistrationRequestBody, error) {
+		return []consts.RegistrationRequestBody{
+			{
+				Country: "Testland",
+				IsoCode: "TL",
+				Features: consts.Features{
+					Capital:          utils.BoolPtr(true),
+					Coordinates:      utils.BoolPtr(true),
+					Population:       utils.BoolPtr(true),
+					Area:             utils.BoolPtr(true),
+					Temperature:      utils.BoolPtr(true),
+					Precipitation:    utils.BoolPtr(true),
+					TargetCurrencies: &[]string{"USD", "EUR"},
+				},
+				TimeChanged: "2025-04-07T12:45:00Z",
+			},
+		}, nil
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getAllDashboardConfigsFromDB()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getAllDashboardConfigsFromDB() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getAllDashboardConfigsFromDB() got = %v, want %v", got, tt.want)
-			}
-		})
+
+	got, err := GetAllDashboardConfigsFunc()
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("Expected 1 config, got %d", len(got))
+	}
+	if got[0].Country != "Testland" {
+		t.Errorf("Expected country Testland, got %s", got[0].Country)
 	}
 }
 

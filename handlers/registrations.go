@@ -19,6 +19,7 @@ const registrationsCollection = "registrations"
 
 var AddDashboardConfigToDBFunc = addDashboardConfigurationToFirestore // Override for testing
 var DeleteDashboardConfigFromDBFunc = deleteDashboardConfigFromDB
+var GetAllDashboardConfigsFunc = getAllDashboardConfigsFromDB
 
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
