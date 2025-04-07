@@ -223,20 +223,73 @@ func Test_handlePatchRequest(t *testing.T) {
 }
 
 func Test_replaceDashboardConfiguration(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
+	// Request body with valid config
+	reqBody := `{
+		"country": "Sweden",
+		"isoCode": "SE",
+		"features": {
+			"capital": true,
+			"coordinates": true,
+			"population": true,
+			"area": true,
+			"temperature": true,
+			"precipitation": true,
+			"targetCurrencies": ["USD", "EUR"]
+		}
+	}`
+
+	// Create test HTTP request
+	req := httptest.NewRequest(http.MethodPut, consts.RegistrationEndpoint+"?id=test-id", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	// Stub to intercept call and verify it gets correct input
+	ReplaceDashboardConfigInDBFunc = func(id string, config consts.RegistrationRequestBody) error {
+		if id != "test-id" {
+			t.Errorf("Expected ID 'test-id', got '%s'", id)
+		}
+		if config.Country != "Sweden" {
+			t.Errorf("Expected country 'Sweden', got '%s'", config.Country)
+		}
+		if config.IsoCode != "SE" {
+			t.Errorf("Expected isoCode 'SE', got '%s'", config.IsoCode)
+		}
+		if config.Features.TargetCurrencies == nil || len(*config.Features.TargetCurrencies) != 2 {
+			t.Errorf("Expected 2 target currencies, got %+v", config.Features.TargetCurrencies)
+		}
+		return nil // simulate success
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
+
+	// Call the handler
+	replaceDashboardConfiguration(rec, req)
+
+	// Assert result
+	resp := rec.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("Expected status 204 No Content, got %d", resp.StatusCode)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			replaceDashboardConfiguration(tt.args.writer, tt.args.request)
-		})
+
+}
+
+func Test_replaceDashboardConfiguration_DBError(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPut, consts.RegistrationEndpoint+"?id=faulty-id", strings.NewReader(
+		`{"country": "X", "isoCode": "X", "features": {}}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	ReplaceDashboardConfigInDBFunc = func(id string, config consts.RegistrationRequestBody) error {
+		return fmt.Errorf("mock db failure")
+	}
+
+	replaceDashboardConfiguration(rec, req)
+
+	resp := rec.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusInternalServerError {
+		t.Errorf("Expected 500 Internal Server Error, got %d", resp.StatusCode)
 	}
 }
 
