@@ -3,6 +3,7 @@ package handlers
 import (
 	"CountriesDashboardService/consts"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -73,20 +74,21 @@ func Test_addDashboardConfiguration(t *testing.T) {
 }
 
 func Test_deleteDashboardConfiguration(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
+	req := httptest.NewRequest(http.MethodDelete, "/dashboard/v1/registrations/?id=test-id", nil)
+	rec := httptest.NewRecorder()
+
+	// Override the deletion logic for isolation
+	DeleteDashboardConfigFromDBFunc = func(id string) error {
+		if id == "test-id" {
+			return nil
+		}
+		return fmt.Errorf("not found")
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			deleteDashboardConfiguration(tt.args.writer, tt.args.request)
-		})
+
+	deleteDashboardConfiguration(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Errorf("Expected status 204 No Content, got %d", rec.Code)
 	}
 }
 

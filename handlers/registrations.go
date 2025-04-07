@@ -18,6 +18,7 @@ import (
 const registrationsCollection = "registrations"
 
 var AddDashboardConfigToDBFunc = addDashboardConfigurationToFirestore // Override for testing
+var DeleteDashboardConfigFromDBFunc = deleteDashboardConfigFromDB
 
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
@@ -375,35 +376,43 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	}
 
 	// Check if Firebase client is initialized
-	if firebase.Client == nil {
-		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
-		return
-	}
+	//if firebase.Client == nil {
+	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+	//	return
+	//}
 
-	// Reference to the specific document
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
-
-	// Check if document exists first (to distinguish between not-found and other errors)
-	doc, err := docRef.Get(firebase.Ctx)
+	err := DeleteDashboardConfigFromDBFunc(id)
 	if err != nil {
-		// Firestore returns a generic error for not found
-		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if !doc.Exists() {
-		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
-		return
-	}
-
-	// Attempt to delete the document
-	if _, err := docRef.Delete(firebase.Ctx); err != nil {
-		sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
+		if err.Error() == "not found" {
+			sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		} else {
+			sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
+		}
 		return
 	}
 
 	// Return 204 No Content on successful deletion
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully deleted configuration with ID: %s", id)
+}
+
+// deleteDashboardConfigFromDB deletes a dashboard configuration from Firestore based on the provided ID.
+func deleteDashboardConfigFromDB(id string) error {
+	if firebase.Client == nil {
+		return fmt.Errorf("firebase client is not initialized")
+	}
+	docRef := firebase.Client.Collection("registrations").Doc(id)
+
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		return err
+	}
+	if !doc.Exists() {
+		return fmt.Errorf("not found")
+	}
+
+	_, err = docRef.Delete(firebase.Ctx)
+	return err
 }
 
 // handleHeadRequest handles HTTP HEAD requests to check the existence and size of dashboard configurations.
