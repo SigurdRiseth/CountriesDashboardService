@@ -454,7 +454,7 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 		jsonData, err = json.Marshal(doc) // Marshal the single document to JSON
 	} else {
 		// Fetch and marshal all dashboard configs if no ID is provided
-		docs, err2 := getAllDashboardConfigsFromDB()
+		docs, err2 := GetAllDashboardConfigsFunc()
 		if err2 != nil {
 			sendErrorResponse(writer, "Error fetching all dashboard configs: "+err2.Error(), http.StatusInternalServerError)
 			return

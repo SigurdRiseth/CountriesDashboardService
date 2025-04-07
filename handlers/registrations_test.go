@@ -94,6 +94,7 @@ func Test_deleteDashboardConfiguration(t *testing.T) {
 	}
 }
 
+// Test getAllDashboardConfigsFromDB with valid request
 func Test_getAllDashboardConfigsFromDB(t *testing.T) {
 	// Setup: mock override
 	GetAllDashboardConfigsFunc = func() ([]consts.RegistrationRequestBody, error) {
@@ -127,47 +128,60 @@ func Test_getAllDashboardConfigsFromDB(t *testing.T) {
 	}
 }
 
+// Test getDashboardConfigFromDB with valid ID
 func Test_getDashboardConfigFromDB(t *testing.T) {
-	type args struct {
-		id string
+	expected := &consts.RegistrationRequestBody{
+		Country: "Norway",
+		IsoCode: "NO",
+		Features: consts.Features{
+			Capital:          utils.BoolPtr(true),
+			Coordinates:      utils.BoolPtr(true),
+			Population:       utils.BoolPtr(true),
+			Area:             utils.BoolPtr(true),
+			Temperature:      utils.BoolPtr(true),
+			Precipitation:    utils.BoolPtr(true),
+			TargetCurrencies: &[]string{"USD", "EUR"},
+		},
 	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *consts.RegistrationRequestBody
-		wantErr bool
-	}{
-		// TODO: Add test cases.
+
+	GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
+		if id != "test-id" {
+			t.Errorf("Unexpected ID: got %s, want %s", id, "test-id")
+		}
+		return expected, nil
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := getDashboardConfigFromDB(tt.args.id)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getDashboardConfigFromDB() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("getDashboardConfigFromDB() got = %v, want %v", got, tt.want)
-			}
-		})
+
+	result, err := GetDashboardConfigFromDBFunc("test-id")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if !reflect.DeepEqual(result, expected) {
+		t.Errorf("Expected %+v, got %+v", expected, result)
 	}
 }
 
+// Test HEAD request → should return 200 OK with an empty body.
 func Test_handleHeadRequest(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
+	req := httptest.NewRequest(http.MethodHead, consts.RegistrationEndpoint, nil)
+	rec := httptest.NewRecorder()
+
+	// Mock the function to return an empty list
+	GetAllDashboardConfigsFunc = func() ([]consts.RegistrationRequestBody, error) {
+		return []consts.RegistrationRequestBody{}, nil
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
+
+	handleHeadRequest(rec, req)
+
+	resp := rec.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("Expected status 200 OK, got %d", resp.StatusCode)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handleHeadRequest(tt.args.writer, tt.args.request)
-		})
+
+	// HEAD responses
+	if body := rec.Body.String(); body != "" {
+		t.Errorf("Expected empty body for HEAD request, got: %q", body)
 	}
 }
 
