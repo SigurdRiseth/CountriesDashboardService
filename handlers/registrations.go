@@ -20,6 +20,7 @@ const registrationsCollection = "registrations"
 var AddDashboardConfigToDBFunc = addDashboardConfigurationToFirestore // Override for testing
 var DeleteDashboardConfigFromDBFunc = deleteDashboardConfigFromDB
 var GetAllDashboardConfigsFunc = getAllDashboardConfigsFromDB
+var PatchDashboardConfigInDBFunc = patchDashboardConfigInDB
 
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
@@ -280,6 +281,7 @@ func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
 //	                  "targetCurrencies": ["EUR", "SEK"]
 //	               }
 //	}
+
 func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Processing PUT request for dashboard configuration")
 
@@ -529,69 +531,68 @@ func sendErrorResponse(writer http.ResponseWriter, message string, statusCode in
 //	      "error": "Configuration not found"
 //	  }
 func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
-	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
-
-	// Validate the ID
 	if id == "" {
 		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
 		return
 	}
 
-	// Check if Firebase client is initialized
-	if firebase.Client == nil {
-		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
-		return
-	}
-
-	// Reference to the specific document
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
-	log.Printf("Patching configuration with ID: %s", id)
-
-	// Check if the document exists
-	doc, err := docRef.Get(firebase.Ctx)
-	if err != nil {
-		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if !doc.Exists() {
-		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
-		return
-	}
-
-	// Decode the request body into the UserUpdateRequest struct for partial updates
 	var inputJSON consts.UserUpdateRequest
 	if err := json.NewDecoder(request.Body).Decode(&inputJSON); err != nil {
 		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Prepare the updates based on the struct fields using reflection
+	err := PatchDashboardConfigInDBFunc(id, inputJSON)
+	if err != nil {
+		if err.Error() == "not found" {
+			sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		} else {
+			sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+		}
+		return
+	}
+
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully patched configuration with ID: %s", id)
+}
+
+// patchDashboardConfigInDB updates a dashboard configuration in Firestore based on the provided ID and input JSON.
+func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) error {
+	if firebase.Client == nil {
+		return fmt.Errorf("firebase client is not initialized")
+	}
+
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		return fmt.Errorf("error checking document existence: %w", err)
+	}
+	if !doc.Exists() {
+		return fmt.Errorf("not found")
+	}
+
 	var updates []firestore.Update
 	val := reflect.ValueOf(inputJSON.Features)
 	typ := reflect.TypeOf(inputJSON.Features)
 
-	// Iterate through the fields of the Features struct
 	for i := 0; i < val.NumField(); i++ {
 		field := typ.Field(i)
 		value := val.Field(i).Interface()
-		// Only add to the update if the value is not nil
 		if value != nil {
-			updates = append(updates, firestore.Update{Path: "Features." + field.Name, Value: value})
+			updates = append(updates, firestore.Update{
+				Path:  "Features." + field.Name,
+				Value: value,
+			})
 		}
 	}
 
-	// Add the lastChange timestamp
-	updates = append(updates, firestore.Update{Path: "TimeChanged", Value: time.Now().Format(time.RFC3339)})
+	updates = append(updates, firestore.Update{
+		Path:  "TimeChanged",
+		Value: time.Now().Format(time.RFC3339),
+	})
 
-	// Perform the update
 	_, err = docRef.Update(firebase.Ctx, updates)
-	if err != nil {
-		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Return 204 No Content on successful update
-	writer.WriteHeader(http.StatusNoContent)
-	log.Printf("Successfully patched configuration with ID: %s", id)
+	return err
 }

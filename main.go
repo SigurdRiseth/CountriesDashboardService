@@ -25,7 +25,7 @@ func main() {
 	router.HandleFunc("/", handlers.Home)
 	router.HandleFunc("/dashboard/v1/registrations/", handlers.HandleRegistrations)
 	router.HandleFunc("/dashboard/v1/notifications/", handlers.HandleNotifications)
-	router.HandleFunc("/dashboard/v1/dashboards/", handlers.ViewDashboard)
+	router.HandleFunc("/dashboard/v1/dashboards/", handlers.ViewDashboardWithClient)
 	router.HandleFunc("/dashboard/v1/status/", handlers.HandleStatus)
 
 	//Calling start time

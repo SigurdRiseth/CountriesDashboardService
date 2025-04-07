@@ -186,20 +186,39 @@ func Test_handleHeadRequest(t *testing.T) {
 }
 
 func Test_handlePatchRequest(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
+	reqBody := `{
+		"features": {
+			"capital": true,
+			"coordinates": true
+		}
+	}`
+
+	// Simulate request with an ID in the query
+	req := httptest.NewRequest(http.MethodPatch, consts.RegistrationEndpoint+"?id=test-id", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	// Mock the patch function
+	PatchDashboardConfigInDBFunc = func(id string, input consts.UserUpdateRequest) error {
+		if id != "test-id" {
+			t.Errorf("Expected ID 'test-id', got '%s'", id)
+		}
+		if input.Features.Capital == nil || *input.Features.Capital != true {
+			t.Errorf("Expected Capital = true, got %+v", input.Features.Capital)
+		}
+		if input.Features.Coordinates == nil || *input.Features.Coordinates != true {
+			t.Errorf("Expected Coordinates = true, got %+v", input.Features.Coordinates)
+		}
+		return nil
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			handlePatchRequest(tt.args.writer, tt.args.request)
-		})
+
+	handlePatchRequest(rec, req)
+
+	resp := rec.Result()
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("Expected status 204 No Content, got %d", resp.StatusCode)
 	}
 }
 

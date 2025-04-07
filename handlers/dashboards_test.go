@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// TestViewDashboardEndpoint tests the ViewDashboardWithClient function with a valid ID
 func TestViewDashboardEndpoint(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithTestID, nil)
 	rec := httptest.NewRecorder()
@@ -31,7 +32,7 @@ func TestViewDashboardEndpoint(t *testing.T) {
 		}, nil
 	}
 
-	ViewDashboard(rec, req)
+	ViewDashboardWithClient(rec, req)
 
 	resp := rec.Result()
 	defer resp.Body.Close()
@@ -40,16 +41,19 @@ func TestViewDashboardEndpoint(t *testing.T) {
 		t.Fatalf("Expected 200 OK, got %d", resp.StatusCode)
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
 	t.Logf("Response: %s", string(body))
 }
 
-// TestViewDashboard_InvalidID tests the ViewDashboard function with an invalid ID
+// TestViewDashboard_MissingID tests the ViewDashboardWithClient function with an invalid ID
 func TestViewDashboard_MissingID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithoutID, nil)
 	rec := httptest.NewRecorder()
 
-	ViewDashboard(rec, req)
+	ViewDashboardWithClient(rec, req)
 
 	resp := rec.Result()
 	defer resp.Body.Close()
@@ -59,7 +63,7 @@ func TestViewDashboard_MissingID(t *testing.T) {
 	}
 }
 
-// TestViewDashboard_ValidID tests the ViewDashboard function with an invalid ID
+// TestViewDashboard_ValidID tests the ViewDashboardWithClient function with an invalid ID
 func TestViewDashboard_InvalidID(t *testing.T) {
 	GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
 		return nil, fmt.Errorf("dashboard not found")
@@ -68,7 +72,7 @@ func TestViewDashboard_InvalidID(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithInvalidID, nil)
 	rec := httptest.NewRecorder()
 
-	ViewDashboard(rec, req)
+	ViewDashboardWithClient(rec, req)
 
 	resp := rec.Result()
 	defer resp.Body.Close()
@@ -78,7 +82,7 @@ func TestViewDashboard_InvalidID(t *testing.T) {
 	}
 }
 
-// TestViewDashboard_AllAPIsFail tests the ViewDashboard function when all external APIs fail
+// TestViewDashboard_AllAPIsFail tests the ViewDashboardWithClient function when all external APIs fail
 // This test simulates a scenario where all external APIs return an error by using a mock server.
 func TestViewDashboard_AllAPIsFail(t *testing.T) {
 	// 1. Create a generic failing mock API
@@ -111,7 +115,7 @@ func TestViewDashboard_AllAPIsFail(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	// 5. Call the handler
-	ViewDashboard(rec, req)
+	ViewDashboardWithClient(rec, req)
 
 	// 6. Assert that it fails gracefully
 	resp := rec.Result()
