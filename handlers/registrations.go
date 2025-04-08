@@ -122,7 +122,6 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}
-	CheckWebhooks(content.IsoCode, Register, id.ID)
 }
 
 // TODO: Implement the viewDashboardConfiguration function. Issue #6-7
@@ -323,7 +322,6 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 	// Return 204 No Content on successful update
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully updated configuration with ID: %s", id)
-	CheckWebhooks(content.IsoCode, Change, id)
 }
 
 // deleteDashboardConfiguration handles HTTP DELETE requests to remove a specific dashboard configuration from Firestore.
@@ -391,7 +389,6 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	// Return 204 No Content on successful deletion
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully deleted configuration with ID: %s", id)
-	CheckWebhooks(doc.Data()["IsoCode"].(string), Delete, id)
 }
 
 // handleHeadRequest handles HTTP HEAD requests to check the existence and size of dashboard configurations.
@@ -449,6 +446,13 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 	writer.Header().Set("Content-Length", fmt.Sprintf("%d", len(jsonData)+1)) // +1 for newline
 	writer.WriteHeader(http.StatusOK)
+}
+
+// sendErrorResponse is a helper function to send error responses in JSON format.
+// It logs the error message and sends a response with the specified status code.
+func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
+	log.Println(message)
+	http.Error(writer, message, statusCode)
 }
 
 // handlePatchRequest handles HTTP PATCH requests to partially update an existing dashboard configuration in Firestore.
@@ -565,12 +569,4 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 	// Return 204 No Content on successful update
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully patched configuration with ID: %s", id)
-	CheckWebhooks(doc.Data()["IsoCode"].(string), Change, id)
-}
-
-// sendErrorResponse is a helper function to send error responses in JSON format.
-// It logs the error message and sends a response with the specified status code.
-func sendErrorResponse(writer http.ResponseWriter, message string, statusCode int) {
-	log.Println(message)
-	http.Error(writer, message, statusCode)
 }

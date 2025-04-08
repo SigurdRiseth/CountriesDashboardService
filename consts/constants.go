@@ -12,4 +12,6 @@ var (
 	MockDashboardEndpointWithTestID    = "/dashboard/v1/dashboards/?id=test-id"
 	MockDashboardEndpointWithoutID     = "/dashboard/v1/dashboards/"
 	MockDashboardEndpointWithInvalidID = "/dashboard/v1/dashboards/?id=nonexistent"
+
+	RegistrationEndpoint = "/dashboard/v1/registration/"
 )

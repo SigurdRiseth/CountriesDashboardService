@@ -10,8 +10,12 @@ import (
 	"time"
 )
 
-// Func to override in tests
+// Stub-able function vars
 var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
+
+var FetchCountryDataFunc = fetchCountryData
+var FetchWeatherDataFunc = fetchWeatherData
+var FetchCurrencyDataFunc = fetchCurrencyData
 
 // ViewDashboard handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
 // It fetches the dashboard configuration for the given ID, populates the requested features (e.g., country data,
@@ -77,8 +81,9 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	features := response["features"].(map[string]interface{})
 
 	// Fetch country data
-	countryData := fetchCountryData(config.Country)
+	countryData := FetchCountryDataFunc(config.Country)
 	if countryData == nil {
+		log.Println("Error retrieving country data")
 		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
 		return
 	}

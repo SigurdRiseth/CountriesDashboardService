@@ -3,121 +3,126 @@ package handlers
 import (
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/utils"
-	"fmt"
-	"io"
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
-func TestViewDashboardEndpoint(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithTestID, nil)
-	rec := httptest.NewRecorder()
-
-	// Temporarily override getDashboardConfigFromDB if needed
+func TestViewDashboard_Success(t *testing.T) {
+	// Stub DB call
 	GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
 		return &consts.RegistrationRequestBody{
 			Country: "Norway",
 			IsoCode: "NO",
 			Features: consts.Features{
+				Temperature:      utils.BoolPtr(true),
+				Precipitation:    utils.BoolPtr(true),
 				Capital:          utils.BoolPtr(true),
 				Coordinates:      utils.BoolPtr(true),
 				Population:       utils.BoolPtr(true),
 				Area:             utils.BoolPtr(true),
-				Temperature:      utils.BoolPtr(true),
-				Precipitation:    utils.BoolPtr(true),
 				TargetCurrencies: &[]string{"USD", "EUR"},
 			},
 		}, nil
 	}
 
-	ViewDashboard(rec, req)
-
-	resp := rec.Result()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected 200 OK, got %d", resp.StatusCode)
+	// Stub external APIs
+	FetchCountryDataFunc = func(country string) map[string]interface{} {
+		return map[string]interface{}{
+			"capital":    []interface{}{"Oslo"},
+			"latlng":     []interface{}{59.91, 10.75},
+			"population": float64(5379475),
+			"area":       float64(323802),
+			"currencies": map[string]interface{}{"NOK": map[string]interface{}{}},
+		}
 	}
 
-	body, _ := io.ReadAll(resp.Body)
-	t.Logf("Response: %s", string(body))
+	FetchWeatherDataFunc = func(features map[string]interface{}, lat, lon float64, config *consts.RegistrationRequestBody) {
+		features["temperature"] = -1.2
+		features["precipitation"] = 0.8
+	}
+
+	FetchCurrencyDataFunc = func(features map[string]interface{}, countryData map[string]interface{}, targetCurrencies []string) {
+		features["targetCurrencies"] = map[string]interface{}{
+			"USD": 1.05,
+			"EUR": 0.95,
+		}
+	}
+
+	// Prepare request
+	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/dashboards?id=test-id", nil)
+	rr := httptest.NewRecorder()
+
+	ViewDashboard(rr, req)
+
+	// Assert
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("unexpected status code: got %v, want %v", status, http.StatusOK)
+	}
+
+	var response map[string]interface{}
+	if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+		t.Errorf("response is not valid JSON: %v", err)
+	}
+
+	// Check expected fields
+	if response["country"] != "Norway" {
+		t.Errorf("unexpected country: got %v", response["country"])
+	}
+	if _, ok := response["features"].(map[string]interface{})["temperature"]; !ok {
+		t.Errorf("missing temperature in features")
+	}
 }
 
-// TestViewDashboard_InvalidID tests the ViewDashboard function with an invalid ID
 func TestViewDashboard_MissingID(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithoutID, nil)
-	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/dashboards", nil)
+	rr := httptest.NewRecorder()
 
-	ViewDashboard(rec, req)
+	ViewDashboard(rr, req)
 
-	resp := rec.Result()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusBadRequest {
-		t.Errorf("Expected 400 Bad Request, got %d", resp.StatusCode)
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 Bad Request, got %d", rr.Code)
 	}
 }
 
-// TestViewDashboard_ValidID tests the ViewDashboard function with an invalid ID
-func TestViewDashboard_InvalidID(t *testing.T) {
+func TestViewDashboard_DBError(t *testing.T) {
 	GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
-		return nil, fmt.Errorf("dashboard not found")
+		return nil, errors.New("DB error")
 	}
 
-	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithInvalidID, nil)
-	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/dashboards?id=test-id", nil)
+	rr := httptest.NewRecorder()
 
-	ViewDashboard(rec, req)
+	ViewDashboard(rr, req)
 
-	resp := rec.Result()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("Expected 500 Internal Server Error, got %d", resp.StatusCode)
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 Internal Server Error, got %d", rr.Code)
 	}
 }
 
-// TestViewDashboard_AllAPIsFail tests the ViewDashboard function when all external APIs fail
-// This test simulates a scenario where all external APIs return an error by using a mock server.
-func TestViewDashboard_AllAPIsFail(t *testing.T) {
-	// 1. Create a generic failing mock API
-	mockFailingAPI := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-	}))
-	defer mockFailingAPI.Close()
-
-	// 2. Override all external API constants to use the failing mock
-	consts.RestCountriesAPI = mockFailingAPI.URL
-	consts.OpenMeteoAPI = mockFailingAPI.URL
-	consts.CurrencyAPI = mockFailingAPI.URL
-
-	// 3. Mock dashboard config
+func TestViewDashboard_FailedCountryData(t *testing.T) {
 	GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
 		return &consts.RegistrationRequestBody{
-			Country: "Neverland",
-			IsoCode: "NV",
+			Country: "Norwy",
+			IsoCode: "N",
 			Features: consts.Features{
-				Capital:          utils.BoolPtr(true),
-				Temperature:      utils.BoolPtr(true),
-				Precipitation:    utils.BoolPtr(true),
-				TargetCurrencies: &[]string{"USD", "EUR"},
+				Capital: utils.BoolPtr(true),
 			},
 		}, nil
 	}
 
-	// 4. Make test request
-	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithTestID, nil)
-	rec := httptest.NewRecorder()
+	FetchCountryDataFunc = func(_ string) map[string]interface{} {
+		return nil
+	}
 
-	// 5. Call the handler
-	ViewDashboard(rec, req)
+	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/dashboards?id=test-id", nil)
+	rr := httptest.NewRecorder()
 
-	// 6. Assert that it fails gracefully
-	resp := rec.Result()
-	defer resp.Body.Close()
+	ViewDashboard(rr, req)
 
-	if resp.StatusCode != http.StatusInternalServerError {
-		t.Errorf("Expected 500 Internal Server Error due to external API failure, got %d", resp.StatusCode)
+	if rr.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500 Internal Server Error, got %d", rr.Code)
 	}
 }
