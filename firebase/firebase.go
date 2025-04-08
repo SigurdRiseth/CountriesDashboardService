@@ -76,3 +76,17 @@ func AddToCollection(collection string, data any) (*firestore.DocumentRef, *fire
 func DeleteDocument(docRef *firestore.DocumentRef) (*firestore.WriteResult, error) {
 	return docRef.Delete(Ctx)
 }
+
+// FirebaseClientInitialized checks if the Firestore client is initialized.
+// It returns true if the client is initialized, false otherwise.
+func FirebaseClientInitialized() bool {
+	if Client == nil {
+		log.Println("Firestore client is not initialized")
+		return false
+	}
+	return true
+}
+
+func DocumentExists(doc *firestore.DocumentSnapshot) bool {
+	return doc.Exists()
+}
