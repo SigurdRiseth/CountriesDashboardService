@@ -12,20 +12,73 @@ import (
 	"testing"
 )
 
+func fakeAddDashboardConfiguration(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("addDashboardConfiguration called"))
+}
+
+func fakeViewDashboardConfiguration(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("viewDashboardConfiguration called"))
+}
+
+func fakeHandleHeadRequest(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("handleHeadRequest called"))
+}
+
+func fakeReplaceDashboardConfiguration(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("replaceDashboardConfiguration called"))
+}
+
+func fakeDelete(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("deleteDashboardConfiguration called"))
+}
+
+func fakeHandlePatchRequest(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("handlePatchRequest called"))
+}
+
+func fakeSendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
+	http.Error(w, message, statusCode)
+}
+
 func TestHandleRegistrations(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
-	}
+	// Inject mocks
+	addDashboardConfigurationFunc = fakeAddDashboardConfiguration
+	viewDashboardConfigurationFunc = fakeViewDashboardConfiguration
+	handleHeadRequestFunc = fakeHandleHeadRequest
+	replaceDashboardConfigurationFunc = fakeReplaceDashboardConfiguration
+	deleteDashboardConfigurationFunc = fakeDelete
+	handlePatchRequestFunc = fakeHandlePatchRequest
+	sendErrorResponseFunc = fakeSendErrorResponse
+
 	tests := []struct {
-		name string
-		args args
+		name         string
+		method       string
+		expectedCode int
+		expectedBody string
 	}{
-		// TODO: Add test cases.
+		{"POST method", http.MethodPost, http.StatusOK, "addDashboardConfiguration called"},
+		{"GET method", http.MethodGet, http.StatusOK, "viewDashboardConfiguration called"},
+		{"HEAD method", http.MethodHead, http.StatusOK, "handleHeadRequest called"},
+		{"PUT method", http.MethodPut, http.StatusOK, "replaceDashboardConfiguration called"},
+		{"DELETE method", http.MethodDelete, http.StatusOK, "deleteDashboardConfiguration called"},
+		{"PATCH method", http.MethodPatch, http.StatusOK, "handlePatchRequest called"},
+		{"Unsupported method", http.MethodOptions, http.StatusMethodNotAllowed, "Unsupported request method: OPTIONS"},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			HandleRegistrations(tt.args.writer, tt.args.request)
+			req := httptest.NewRequest(tt.method, "/registrations", nil)
+			rr := httptest.NewRecorder()
+
+			HandleRegistrations(rr, req)
+
+			if rr.Code != tt.expectedCode {
+				t.Errorf("expected status code %d, got %d", tt.expectedCode, rr.Code)
+			}
+
+			if strings.TrimSpace(rr.Body.String()) != tt.expectedBody {
+				t.Errorf("expected body %q, got %q", tt.expectedBody, rr.Body.String())
+			}
 		})
 	}
 }

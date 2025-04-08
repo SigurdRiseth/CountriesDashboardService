@@ -23,6 +23,16 @@ var GetAllDashboardConfigsFunc = getAllDashboardConfigsFromDB
 var PatchDashboardConfigInDBFunc = patchDashboardConfigInDB
 var ReplaceDashboardConfigInDBFunc = replaceDashboardConfigInDB
 
+var (
+	addDashboardConfigurationFunc     = addDashboardConfiguration
+	viewDashboardConfigurationFunc    = viewDashboardConfiguration
+	handleHeadRequestFunc             = handleHeadRequest
+	replaceDashboardConfigurationFunc = replaceDashboardConfiguration
+	deleteDashboardConfigurationFunc  = deleteDashboardConfiguration
+	handlePatchRequestFunc            = handlePatchRequest
+	sendErrorResponseFunc             = sendErrorResponse
+)
+
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
 // - POST: Adds a new dashboard configuration.
@@ -36,20 +46,19 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Registrations endpoint received " + request.Method + " request.")
 	switch request.Method {
 	case http.MethodPost:
-		addDashboardConfiguration(writer, request)
+		addDashboardConfigurationFunc(writer, request)
 	case http.MethodGet:
-		viewDashboardConfiguration(writer, request)
+		viewDashboardConfigurationFunc(writer, request)
 	case http.MethodHead:
-		handleHeadRequest(writer, request)
+		handleHeadRequestFunc(writer, request)
 	case http.MethodPut:
-		replaceDashboardConfiguration(writer, request)
+		replaceDashboardConfigurationFunc(writer, request)
 	case http.MethodDelete:
-		deleteDashboardConfiguration(writer, request)
+		deleteDashboardConfigurationFunc(writer, request)
 	case http.MethodPatch:
-		handlePatchRequest(writer, request)
+		handlePatchRequestFunc(writer, request)
 	default:
-		sendErrorResponse(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
-		return
+		sendErrorResponseFunc(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -86,6 +95,7 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 //	  "lastChange": "2025-03-23T17:29:44+01:00"
 //	}
 //	```
+
 func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 
