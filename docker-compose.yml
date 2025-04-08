@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080" # maps container:host
+    volumes:
+      - .:/app # optional: live code updates during development
+    environment:
+      - PORT=8080
+    restart: unless-stopped
