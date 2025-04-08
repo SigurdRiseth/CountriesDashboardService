@@ -29,7 +29,7 @@ func HandleStatus(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodGet:
 		handleGetStatus(writer, request)
 	default:
-		sendErrorResponseStatus(writer, "Method not allowed", http.StatusMethodNotAllowed)
+		sendErrorResponseStatus(writer, consts.MethodNotAllowed, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -65,7 +65,7 @@ func HandleStatus(writer http.ResponseWriter, request *http.Request) {
 //	  "uptime": 3600
 //	}
 func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
-	log.Println("Processing GET request for service status")
+	log.Println(consts.LogGETForService)
 
 	// Initialize the status response
 	status := map[string]interface{}{
@@ -74,24 +74,24 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Check availability of dependent services
-	status["countries_api"] = checkServiceAvailability(fmt.Sprintf("%s/name/unknown", consts.RestCountriesAPI))
-	status["meteo_api"] = checkServiceAvailability(consts.OpenMeteoAPI + "?latitude=0&longitude=0&hourly=temperature_2m")
+	status["countries_api"] = checkServiceAvailability(fmt.Sprintf(consts.QueryNameUnknown, consts.RestCountriesAPI))
+	status["meteo_api"] = checkServiceAvailability(consts.OpenMeteoAPI + consts.QueryMeteoLatLong)
 	status["currency_api"] = checkServiceAvailability(fmt.Sprintf("%s/NOK", consts.CurrencyAPI))
 	status["notification_db"] = CheckNotificationDBFunc()
 
 	// Count registered webhooks
 	webhookCount, err := CountWebhooksFunc()
 	if err != nil {
-		sendErrorResponse(writer, "Failed to count registered webhooks: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.FailedCountRegisteredWH+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	status["webhooks"] = webhookCount
 
 	// Send the response
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 	writer.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(writer).Encode(status); err != nil {
-		sendErrorResponse(writer, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.FailedEncodeJSON+err.Error(), http.StatusInternalServerError)
 	}
 }
 
@@ -112,7 +112,7 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 func checkServiceAvailability(url string) int {
 	// Use GET if the URL is for the Currency API (based on path pattern)
 	isCurrencyAPI := false
-	urlContainsCurrency := "/currency/"
+	urlContainsCurrency := consts.CurrencyParam
 
 	if len(url) > 0 && urlContainsCurrency != "" && utils.Contains(url, urlContainsCurrency) {
 		isCurrencyAPI = true
@@ -128,12 +128,12 @@ func checkServiceAvailability(url string) int {
 	}
 
 	if err != nil {
-		log.Printf("Error checking service availability for %s: %v", url, err)
+		log.Printf(consts.CheckingServiceAvailability, url, err)
 		return http.StatusServiceUnavailable
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Println("Error closing response body for", url, ":", err)
+			log.Println(consts.ClosingResponseBody, url, ":", err)
 		}
 	}()
 
@@ -150,7 +150,7 @@ func checkServiceAvailability(url string) int {
 //   - 200 if the database is accessible, 503 if it is not.
 func checkNotificationDB() int {
 	if firebase.Client == nil {
-		log.Println("Firestore client is not initialized")
+		log.Println(consts.FTNotInitialized)
 		return http.StatusServiceUnavailable // 503 if the client is not initialized
 	}
 
@@ -177,13 +177,13 @@ func checkNotificationDB() int {
 //   - An error if the Firestore client is not initialized or the query fails.
 func countWebhooks() (int64, error) {
 	if firebase.Client == nil {
-		return 0, fmt.Errorf("firestore client is not initialized")
+		return 0, fmt.Errorf(consts.FTNotInitialized)
 	}
 
 	// Query the notifications collection and count the documents
 	docs, err := firebase.Client.Collection(firebase.NotificationsCollection).Documents(firebase.Ctx).GetAll()
 	if err != nil {
-		return 0, fmt.Errorf("error querying webhooks: %v", err)
+		return 0, fmt.Errorf(consts.QueryingWebhooks, err)
 	}
 
 	return int64(len(docs)), nil
@@ -199,10 +199,10 @@ func countWebhooks() (int64, error) {
 //   - message: The error message to include in the response.
 //   - statusCode: The HTTP status code to use for the response.
 func sendErrorResponseStatus(writer http.ResponseWriter, message string, statusCode int) {
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 	writer.WriteHeader(statusCode)
 	response := map[string]string{"error": message}
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		log.Printf("Error encoding error response: %v", err)
+		log.Printf(consts.EncodingErrorResponse, err)
 	}
 }

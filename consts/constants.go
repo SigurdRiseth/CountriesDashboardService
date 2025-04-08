@@ -38,8 +38,11 @@ const (
 
 // Query parameter keys
 const (
-	QueryParamID   = "id"
-	QueryParamName = "/name/"
+	QueryParamID      = "id"
+	QueryParamName    = "/name/"
+	CurrencyParam     = "/currency/"
+	QueryNameUnknown  = "%s/name/unknown"
+	QueryMeteoLatLong = "?latitude=0&longitude=0&hourly=temperature_2m"
 )
 
 // Logging message templates (optional, can be used in `log.Printf`)
@@ -51,15 +54,21 @@ const (
 	LogGetSingle     = "Retrieving single dashboard configuration with ID: %s "
 	LogGetAll        = "Retrieving all dashboard configurations "
 	LogPutProcessing = "Processing PUT request for dashboard configuration "
+	LogGETForService = "Processing GET request for service status"
 )
 
 // Errors
 const (
-	MissingIDParamInURL   = "Missing configuration ID in URL path"
-	NotFound              = "not found"
-	ClosingResponseBody   = "Error closing response body: "
-	FailedEncodeJSON      = "Failed to encode response as JSON: "
-	ErrorEncodingResponse = "Error encoding response: "
+	MissingIDParamInURL         = "Missing configuration ID in URL path"
+	NotFound                    = "not found"
+	ClosingResponseBody         = "Error closing response body: "
+	FailedEncodeJSON            = "Failed to encode response as JSON: "
+	ErrorEncodingResponse       = "Error encoding response: "
+	MethodNotAllowed            = "Method not allowed"
+	QueryingWebhooks            = "error querying webhooks: %v"
+	EncodingErrorResponse       = "Error encoding error response: %v "
+	CheckingServiceAvailability = "Error checking service availability for %s: %v"
+	FailedCountRegisteredWH     = "Failed to count registered webhooks: "
 )
 
 const (
@@ -69,4 +78,5 @@ const (
 // firebase
 const (
 	FBNotInitialized = "firebase client is not initialized"
+	FTNotInitialized = "firestore client is not initialized"
 )
