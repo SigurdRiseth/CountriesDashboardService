@@ -293,22 +293,38 @@ func Test_replaceDashboardConfiguration_DBError(t *testing.T) {
 	}
 }
 
+// Test sendErrorResponse with a valid message and status code, and that message is the right type.
 func Test_sendErrorResponse(t *testing.T) {
-	type args struct {
-		writer     http.ResponseWriter
-		message    string
-		statusCode int
+	rr := httptest.NewRecorder()
+	expectedMessage := "Something went wrong"
+	expectedStats := http.StatusBadRequest
+
+	sendErrorResponse(rr, expectedMessage, expectedStats)
+
+	if body := strings.TrimSpace(rr.Body.String()); body != expectedMessage {
+		t.Errorf("Expected message '%s', got '%s'", expectedMessage, body)
 	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
+
+	if rr.Code != expectedStats {
+		t.Errorf("Expected status code %d, got %d", expectedStats, rr.Code)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			sendErrorResponse(tt.args.writer, tt.args.message, tt.args.statusCode)
-		})
+
+	contentType := rr.Header().Get("Content-Type")
+	if contentType != "text/plain; charset=utf-8" {
+		t.Errorf("Expected Content-Type 'text/plain; charset=utf-8', got '%s'", contentType)
+	}
+}
+
+// Test sendErrorResponse with an empty message and a valid status code 404.
+func Test_sendErrorResponse_EmptyMessage(t *testing.T) {
+	rr := httptest.NewRecorder()
+	sendErrorResponse(rr, "", http.StatusNotFound)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("Expected 404, got %d", rr.Code)
+	}
+	if strings.TrimSpace(rr.Body.String()) != "" {
+		t.Errorf("Expected empty body, got '%s'", rr.Body.String())
 	}
 }
 
