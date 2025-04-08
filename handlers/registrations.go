@@ -17,22 +17,6 @@ import (
 // Collection name in Firestore
 const registrationsCollection = "registrations"
 
-var AddDashboardConfigToDBFunc = addDashboardConfigurationToFirestore // Override for testing
-var DeleteDashboardConfigFromDBFunc = deleteDashboardConfigFromDB
-var GetAllDashboardConfigsFunc = getAllDashboardConfigsFromDB
-var PatchDashboardConfigInDBFunc = patchDashboardConfigInDB
-var ReplaceDashboardConfigInDBFunc = replaceDashboardConfigInDB
-
-var (
-	addDashboardConfigurationFunc     = addDashboardConfiguration
-	viewDashboardConfigurationFunc    = viewDashboardConfiguration
-	handleHeadRequestFunc             = handleHeadRequest
-	replaceDashboardConfigurationFunc = replaceDashboardConfiguration
-	deleteDashboardConfigurationFunc  = deleteDashboardConfiguration
-	handlePatchRequestFunc            = handlePatchRequest
-	sendErrorResponseFunc             = sendErrorResponse
-)
-
 // HandleRegistrations handles HTTP requests for dashboard configurations.
 // It supports the following methods:
 // - POST: Adds a new dashboard configuration.
@@ -46,19 +30,20 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Registrations endpoint received " + request.Method + " request.")
 	switch request.Method {
 	case http.MethodPost:
-		addDashboardConfigurationFunc(writer, request)
+		addDashboardConfiguration(writer, request)
 	case http.MethodGet:
-		viewDashboardConfigurationFunc(writer, request)
+		viewDashboardConfiguration(writer, request)
 	case http.MethodHead:
-		handleHeadRequestFunc(writer, request)
+		handleHeadRequest(writer, request)
 	case http.MethodPut:
-		replaceDashboardConfigurationFunc(writer, request)
+		replaceDashboardConfiguration(writer, request)
 	case http.MethodDelete:
-		deleteDashboardConfigurationFunc(writer, request)
+		deleteDashboardConfiguration(writer, request)
 	case http.MethodPatch:
-		handlePatchRequestFunc(writer, request)
+		handlePatchRequest(writer, request)
 	default:
-		sendErrorResponseFunc(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
+		sendErrorResponse(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
+		return
 	}
 }
 
@@ -95,7 +80,6 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 //	  "lastChange": "2025-03-23T17:29:44+01:00"
 //	}
 //	```
-
 func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 
@@ -117,43 +101,30 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	content.TimeChanged = timeNow
 
 	// Check if Firebase client is initialized
-	//if firebase.Client == nil {
-	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
-	//	return
-	//}
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
+		return
+	}
 
 	// Write the document to Firestore
-	idstr, err := AddDashboardConfigToDBFunc(content)
+	id, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, content)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Document added to registrationsCollection. Identifier of returned document: " + idstr)
+	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id.ID)
 
 	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
-		Id:         idstr,
+		Id:         id.ID,
 		LastChange: timeNow,
 	}
-	writer.WriteHeader(http.StatusCreated) // 201 Created
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
 		log.Printf("Error encoding JSON response: %v", err)
 	}
 }
 
-// addDashboardConfigurationToFirestore adds a new dashboard configuration to Firestore.
-func addDashboardConfigurationToFirestore(body consts.RegistrationRequestBody) (string, error) {
-	if firebase.Client == nil {
-		return "", fmt.Errorf("firebase client is not initialized")
-	}
-	docRef, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, body)
-	if err != nil {
-		return "", err
-	}
-	return docRef.ID, nil
-}
-
-// viewDashboardConfiguration handles HTTP GET requests to view dashboard configurations.
+// TODO: Implement the viewDashboardConfiguration function. Issue #6-7
 func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	id := request.URL.Query().Get("id")
 	var response interface{}
@@ -164,7 +135,7 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 		response, err = GetDashboardConfigFromDBFunc(id) // return a single dashboard configuration
 	} else {
 		log.Println("Retrieving all dashboard configurations")
-		response, err = GetAllDashboardConfigsFunc() // return all dashboard configurations
+		response, err = getAllDashboardConfigsFromDB() // return all dashboard configurations
 	}
 
 	if err != nil {
@@ -292,49 +263,65 @@ func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
 //	                  "targetCurrencies": ["EUR", "SEK"]
 //	               }
 //	}
-
 func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Processing PUT request for dashboard configuration")
 
+	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
+
+	// Validate the ID
 	if id == "" {
 		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
 		return
 	}
 
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Decode the request body into a RegistrationRequestBody struct
 	var content consts.RegistrationRequestBody
 	if err := json.NewDecoder(request.Body).Decode(&content); err != nil {
 		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	// Validate required fields
 	if content.Country == "" || content.IsoCode == "" {
 		sendErrorResponse(writer, "Missing required fields: country or isoCode", http.StatusBadRequest)
 		return
 	}
 
-	// Add timestamp before passing to DB layer
-	content.TimeChanged = time.Now().Format(time.RFC3339)
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
 
-	// ReplaceDashboardConfigInDBFunc handles the Firestore logic
-	err := ReplaceDashboardConfigInDBFunc(id, content)
+	// Check if document exists first
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Set the current timestamp in RFC3339 format
+	timeNow := time.Now().Format(time.RFC3339)
+	content.TimeChanged = timeNow
+
+	// Update the document in Firestore
+	_, err = docRef.Set(firebase.Ctx, content)
 	if err != nil {
 		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// Return 204 No Content on successful update
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully updated configuration with ID: %s", id)
-}
-
-func replaceDashboardConfigInDB(id string, content consts.RegistrationRequestBody) error {
-	if firebase.Client == nil {
-		return fmt.Errorf("firebase client is not initialized")
-	}
-
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
-	_, err := docRef.Set(firebase.Ctx, content)
-	return err
 }
 
 // deleteDashboardConfiguration handles HTTP DELETE requests to remove a specific dashboard configuration from Firestore.
@@ -373,43 +360,35 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	}
 
 	// Check if Firebase client is initialized
-	//if firebase.Client == nil {
-	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
-	//	return
-	//}
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
 
-	err := DeleteDashboardConfigFromDBFunc(id)
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+
+	// Check if document exists first (to distinguish between not-found and other errors)
+	doc, err := docRef.Get(firebase.Ctx)
 	if err != nil {
-		if err.Error() == "not found" {
-			sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
-		} else {
-			sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
-		}
+		// Firestore returns a generic error for not found
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Attempt to delete the document
+	if _, err := docRef.Delete(firebase.Ctx); err != nil {
+		sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Return 204 No Content on successful deletion
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf("Successfully deleted configuration with ID: %s", id)
-}
-
-// deleteDashboardConfigFromDB deletes a dashboard configuration from Firestore based on the provided ID.
-func deleteDashboardConfigFromDB(id string) error {
-	if firebase.Client == nil {
-		return fmt.Errorf("firebase client is not initialized")
-	}
-	docRef := firebase.Client.Collection("registrations").Doc(id)
-
-	doc, err := docRef.Get(firebase.Ctx)
-	if err != nil {
-		return err
-	}
-	if !doc.Exists() {
-		return fmt.Errorf("not found")
-	}
-
-	_, err = docRef.Delete(firebase.Ctx)
-	return err
 }
 
 // handleHeadRequest handles HTTP HEAD requests to check the existence and size of dashboard configurations.
@@ -450,7 +429,7 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 		jsonData, err = json.Marshal(doc) // Marshal the single document to JSON
 	} else {
 		// Fetch and marshal all dashboard configs if no ID is provided
-		docs, err2 := GetAllDashboardConfigsFunc()
+		docs, err2 := getAllDashboardConfigsFromDB()
 		if err2 != nil {
 			sendErrorResponse(writer, "Error fetching all dashboard configs: "+err2.Error(), http.StatusInternalServerError)
 			return
@@ -525,68 +504,69 @@ func sendErrorResponse(writer http.ResponseWriter, message string, statusCode in
 //	      "error": "Configuration not found"
 //	  }
 func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
+	// Extract the ID from the URL path
 	id := request.URL.Query().Get("id")
+
+	// Validate the ID
 	if id == "" {
 		sendErrorResponse(writer, "Missing configuration ID in URL path", http.StatusBadRequest)
 		return
 	}
 
+	// Check if Firebase client is initialized
+	if firebase.Client == nil {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
+
+	// Reference to the specific document
+	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+	log.Printf("Patching configuration with ID: %s", id)
+
+	// Check if the document exists
+	doc, err := docRef.Get(firebase.Ctx)
+	if err != nil {
+		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !doc.Exists() {
+		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+		return
+	}
+
+	// Decode the request body into the UserUpdateRequest struct for partial updates
 	var inputJSON consts.UserUpdateRequest
 	if err := json.NewDecoder(request.Body).Decode(&inputJSON); err != nil {
 		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err := PatchDashboardConfigInDBFunc(id, inputJSON)
-	if err != nil {
-		if err.Error() == "not found" {
-			sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
-		} else {
-			sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
-		}
-		return
-	}
-
-	writer.WriteHeader(http.StatusNoContent)
-	log.Printf("Successfully patched configuration with ID: %s", id)
-}
-
-// patchDashboardConfigInDB updates a dashboard configuration in Firestore based on the provided ID and input JSON.
-func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) error {
-	if firebase.Client == nil {
-		return fmt.Errorf("firebase client is not initialized")
-	}
-
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
-
-	doc, err := docRef.Get(firebase.Ctx)
-	if err != nil {
-		return fmt.Errorf("error checking document existence: %w", err)
-	}
-	if !doc.Exists() {
-		return fmt.Errorf("not found")
-	}
-
+	// Prepare the updates based on the struct fields using reflection
 	var updates []firestore.Update
 	val := reflect.ValueOf(inputJSON.Features)
 	typ := reflect.TypeOf(inputJSON.Features)
 
+	// Iterate through the fields of the Features struct
 	for i := 0; i < val.NumField(); i++ {
 		field := typ.Field(i)
 		value := val.Field(i).Interface()
+		// Only add to the update if the value is not nil
 		if value != nil {
-			updates = append(updates, firestore.Update{
-				Path:  "Features." + field.Name,
-				Value: value,
-			})
+			updates = append(updates, firestore.Update{Path: "Features." + field.Name, Value: value})
 		}
 	}
 
-	updates = append(updates, firestore.Update{
-		Path:  "TimeChanged",
-		Value: time.Now().Format(time.RFC3339),
-	})
+	// Add the lastChange timestamp
+	updates = append(updates, firestore.Update{Path: "TimeChanged", Value: time.Now().Format(time.RFC3339)})
 
+	// Perform the update
 	_, err = docRef.Update(firebase.Ctx, updates)
-	return err
+	if err != nil {
+		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return 204 No Content on successful update
+	writer.WriteHeader(http.StatusNoContent)
+	log.Printf("Successfully patched configuration with ID: %s", id)
 }

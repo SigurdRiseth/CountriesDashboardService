@@ -23,6 +23,13 @@ var (
 	maxRetries   = 3
 )
 
+const (
+	Register = "REGISTER"
+	Change   = "CHANGE"
+	Delete   = "DELETE"
+	Invoke   = "INVOKE"
+)
+
 // Collection name in Firestore
 const notificationsCollection = "notifications"
 
@@ -60,7 +67,7 @@ func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Validate the Event field
-	validEvents := map[string]bool{"REGISTER": true, "CHANGE": true, "DELETE": true, "INVOKE": true}
+	validEvents := map[string]bool{Register: true, Change: true, Delete: true, Invoke: true}
 	if !validEvents[webhook.Event] {
 		sendErrorResponse(writer, "Invalid Event value: "+webhook.Event, http.StatusBadRequest)
 		return
@@ -222,19 +229,53 @@ func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
 	}
 }
 
-// CallUrl sends an HTTP POST request with event and content, using HMAC validation.
-//
-// Parameters:
-// - url: The URL to which the HTTP POST request is sent.
-// - event: The event type to be included in the payload.
-// - content: The content to be included in the payload.
-func CallUrl(url, event, content string) {
-	log.Printf("Attempting invocation of URL %s with event '%s' and content: '%s'.", url, event, content)
+// CheckWebhooks checks for registered webhooks that match the given country and event,
+// and triggers a webhook call for each matching registration.
+func CheckWebhooks(country, event, id string) {
+	timeStamp := time.Now().Format(time.RFC3339)
+
+	// Retrieve all webhook registrations from Firestore
+	iter := firebase.Client.Collection(notificationsCollection).Documents(firebase.Ctx)
+
+	var webhooks []consts.WebhookRegistration
+	for {
+		doc, err := iter.Next()
+		if errors.Is(err, iterator.Done) {
+			break // Exit loop when all documents are processed
+		}
+		if err != nil {
+			log.Printf("Error iterating Firestore documents: %v", err)
+			return
+		}
+
+		var webhook consts.WebhookRegistration
+		if err := doc.DataTo(&webhook); err != nil {
+			log.Printf("Error converting Firestore document to struct: %v", err)
+			continue // Skip this document and proceed with the next one
+		}
+
+		webhooks = append(webhooks, webhook)
+	}
+
+	// Filter and trigger matching webhooks
+	for _, webhook := range webhooks {
+		if webhook.Event == event && webhook.Country == country {
+			log.Printf("Triggering webhook for country %s with event %s: %s", country, event, webhook.Url)
+			CallUrl(webhook.Url, event, id, timeStamp, webhook.Country)
+		}
+	}
+}
+
+// CallUrl sends an HTTP POST request with event details, including HMAC-based validation for payload security.
+func CallUrl(url, event, id, timeStamp, country string) {
+	log.Printf("Attempting invocation of URL %s with event '%s' and ID '%s'.", url, event, id)
 
 	// Create the JSON payload
 	payload := consts.WebhookPayload{
 		Event:   event,
-		Content: content,
+		Id:      id,
+		Time:    timeStamp,
+		Country: country,
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
@@ -242,36 +283,40 @@ func CallUrl(url, event, content string) {
 		return
 	}
 
-	// Create the HTTP POST request
+	// Create the HTTP POST request with JSON body and content-based HMAC header
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(payloadBytes))
 	if err != nil {
 		log.Printf("Error creating HTTP request: %v", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-
-	// HMAC signature generation
-	mac := hmac.New(sha256.New, Secret)
-	_, err = mac.Write([]byte(content))
-	if err != nil {
-		log.Printf("Error during content hashing: %v", err)
-		return
-	}
-	req.Header.Set(SignatureKey, hex.EncodeToString(mac.Sum(nil)))
+	req.Header.Set(SignatureKey, generateHMACSignature(payloadBytes))
 
 	// Perform the HTTP POST request with retry logic
 	client := &http.Client{Timeout: 5 * time.Second}
+	executeWithRetry(client, req, url)
+}
+
+// generateHMACSignature generates an HMAC signature for the given payload.
+func generateHMACSignature(payload []byte) string {
+	mac := hmac.New(sha256.New, Secret)
+	mac.Write(payload)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// executeWithRetry performs the HTTP POST request with retry and exponential backoff.
+func executeWithRetry(client *http.Client, req *http.Request, url string) {
 	for retry := 0; retry < maxRetries; retry++ {
 		res, err := client.Do(req)
 		if err != nil {
 			log.Printf("HTTP request failed (attempt %d/%d): %v", retry+1, maxRetries, err)
-			time.Sleep(time.Duration(retry) * time.Second) // Exponential backoff
+			time.Sleep(time.Duration(retry) * time.Second)
 			continue
 		}
 
 		defer res.Body.Close()
 
-		// Read the response body
+		// Read and log the response
 		responseBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			log.Printf("Error reading response body: %v", err)
@@ -280,18 +325,17 @@ func CallUrl(url, event, content string) {
 
 		log.Printf("Webhook %s invoked. Received status code %d and body: %s", url, res.StatusCode, string(responseBody))
 
-		// Check for HTTP errors and decide whether to retry
+		// Successful response handling
 		if res.StatusCode >= 200 && res.StatusCode < 300 {
 			log.Printf("Successfully invoked webhook %s with status code %d", url, res.StatusCode)
 			return
-		} else {
-			log.Printf("Non-2xx status code received: %d", res.StatusCode)
-			if retry == maxRetries-1 {
-				log.Printf("Max retries reached. Failed to invoke webhook %s.", url)
-				return
-			}
-			time.Sleep(time.Duration(retry+1) * time.Second) // Exponential backoff before retry
 		}
+
+		log.Printf("Non-2xx status code received: %d", res.StatusCode)
+		if retry == maxRetries-1 {
+			log.Printf("Max retries reached. Failed to invoke webhook %s.", url)
+		}
+		time.Sleep(time.Duration(retry+1) * time.Second) // Exponential backoff before retry
 	}
 
 	log.Println("Webhook invocation failed after retries.")

@@ -104,6 +104,9 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, "Failed to encode response as JSON", http.StatusInternalServerError)
 		log.Println("Error encoding response:", err)
 	}
+
+	CheckWebhooks(config.IsoCode, Invoke, id)
+	log.Println("Dashboard response sent successfully:", response)
 }
 
 // populateCountryFeatures populates country-related features in the dashboard response.
