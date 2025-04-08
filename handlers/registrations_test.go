@@ -329,19 +329,81 @@ func Test_sendErrorResponse_EmptyMessage(t *testing.T) {
 }
 
 func Test_viewDashboardConfiguration(t *testing.T) {
-	type args struct {
-		writer  http.ResponseWriter
-		request *http.Request
-	}
-	tests := []struct {
-		name string
-		args args
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			viewDashboardConfiguration(tt.args.writer, tt.args.request)
-		})
-	}
+	t.Run("with ID - fetch single config", func(t *testing.T) {
+		expected := &consts.RegistrationRequestBody{
+			Country: "Norway",
+			IsoCode: "NO",
+			Features: consts.Features{
+				Capital:     utils.BoolPtr(true),
+				Coordinates: utils.BoolPtr(true),
+			},
+		}
+
+		// Stub single fetch
+		GetDashboardConfigFromDBFunc = func(id string) (*consts.RegistrationRequestBody, error) {
+			if id != "123" {
+				t.Errorf("Expected ID to be '123', got %s", id)
+			}
+			return expected, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/registrations/?id=123", nil)
+		rec := httptest.NewRecorder()
+
+		viewDashboardConfiguration(rec, req)
+
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status 200 OK, got %d", resp.StatusCode)
+		}
+
+		var got consts.RegistrationRequestBody
+		if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+			t.Fatalf("Error decoding response: %v", err)
+		}
+
+		if !reflect.DeepEqual(&got, expected) {
+			t.Errorf("Expected %+v, got %+v", expected, got)
+		}
+	})
+
+	t.Run("without ID - fetch all configs", func(t *testing.T) {
+		expected := []consts.RegistrationRequestBody{
+			{
+				Country: "Sweden",
+				IsoCode: "SE",
+				Features: consts.Features{
+					Capital:     utils.BoolPtr(true),
+					Coordinates: utils.BoolPtr(false),
+				},
+			},
+		}
+
+		GetAllDashboardConfigsFunc = func() ([]consts.RegistrationRequestBody, error) {
+			return expected, nil
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/registrations/", nil)
+		rec := httptest.NewRecorder()
+
+		viewDashboardConfiguration(rec, req)
+
+		resp := rec.Result()
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected 200 OK, got %d", resp.StatusCode)
+		}
+
+		var got []consts.RegistrationRequestBody
+		if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+			t.Fatalf("Error decoding response: %v", err)
+		}
+
+		if !reflect.DeepEqual(got, expected) {
+			t.Errorf("Expected %+v, got %+v", expected, got)
+		}
+	})
 }

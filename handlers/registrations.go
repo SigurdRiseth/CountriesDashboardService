@@ -143,7 +143,7 @@ func addDashboardConfigurationToFirestore(body consts.RegistrationRequestBody) (
 	return docRef.ID, nil
 }
 
-// TODO: Implement the viewDashboardConfiguration function. Issue #6-7
+// viewDashboardConfiguration handles HTTP GET requests to view dashboard configurations.
 func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	id := request.URL.Query().Get("id")
 	var response interface{}
@@ -154,7 +154,7 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 		response, err = GetDashboardConfigFromDBFunc(id) // return a single dashboard configuration
 	} else {
 		log.Println("Retrieving all dashboard configurations")
-		response, err = getAllDashboardConfigsFromDB() // return all dashboard configurations
+		response, err = GetAllDashboardConfigsFunc() // return all dashboard configurations
 	}
 
 	if err != nil {

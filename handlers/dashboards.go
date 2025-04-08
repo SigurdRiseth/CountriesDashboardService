@@ -81,7 +81,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	features := response["features"].(map[string]interface{})
 
 	// Fetch country data
-	countryData := fetchCountryData(config.Country)
+	countryData := FetchCountryDataFunc(config.Country)
 	if countryData == nil {
 		log.Println("Error retrieving country data")
 		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
