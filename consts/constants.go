@@ -1,17 +1,66 @@
 package consts
 
-// Constants for external API URLs and endpoints
-var (
+// Firestore Collections
+const (
+	RegistrationsCollection = "registrations"
+)
+
+// External API URLs
+const (
 	RestCountriesAPI = "http://129.241.150.113:8080/v3.1"
 	OpenMeteoAPI     = "https://api.open-meteo.com/v1/forecast"
 	CurrencyAPI      = "http://129.241.150.113:9090/currency"
 )
 
-// Endpoints for the dashboard service tests
-var (
-	MockDashboardEndpointWithTestID    = "/dashboard/v1/dashboards/?id=test-id"
-	MockDashboardEndpointWithoutID     = "/dashboard/v1/dashboards/"
-	MockDashboardEndpointWithInvalidID = "/dashboard/v1/dashboards/?id=nonexistent"
+// API Endpoint Base Paths
+const (
+	BaseDashboardPath    = "/dashboard/v1/dashboards/"
+	BaseRegistrationPath = "/dashboard/v1/registrations/"
+	BaseStatusPath       = "/dashboard/v1/status/"
+	BaseNotificationPath = "/dashboard/v1/notifications/"
+)
 
-	RegistrationEndpoint = "/dashboard/v1/registration/"
+// Mock/Test Endpoints for Dashboards
+var (
+	MockDashboardEndpointWithTestID    = BaseDashboardPath + "?id=test-id"
+	MockDashboardEndpointWithoutID     = BaseDashboardPath
+	MockDashboardEndpointWithInvalidID = BaseDashboardPath + "?id=nonexistent"
+)
+
+// HTTP header values
+const (
+	ContentTypeHeader   = "Content-Type"
+	ApplicationJSON     = "application/json"
+	ContentLengthHeader = "Content-Length"
+)
+
+// Query parameter keys
+const (
+	QueryParamID = "id"
+)
+
+// Logging message templates (optional, can be used in `log.Printf`)
+const (
+	LogAddSuccess    = "Document added to %s. Identifier of returned document: %s "
+	LogUpdateSuccess = "Successfully updated configuration with ID: %s "
+	LogDeleteSuccess = "Successfully deleted configuration with ID: %s "
+	LogPatchSuccess  = "Successfully patched configuration with ID: %s "
+	LogGetSingle     = "Retrieving single dashboard configuration with ID: %s "
+	LogGetAll        = "Retrieving all dashboard configurations "
+	LogPutProcessing = "Processing PUT request for dashboard configuration "
+)
+
+// Errors
+const (
+	MissingIDParamInURL = "Missing configuration ID in URL path"
+	NotFound            = "not found"
+)
+
+const (
+	InvalidJSONPayload = "Invalid JSON payload "
+)
+
+// firebase
+const (
+	FBNotInitialized = "firebase client is not initialized"
 )
