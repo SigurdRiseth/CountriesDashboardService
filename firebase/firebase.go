@@ -46,3 +46,33 @@ func CloseFirebase() {
 		_ = Client.Close()
 	}
 }
+
+// GetCollectionIterator returns a DocumentIterator for the specified Firestore collection.
+func GetCollectionIterator(collection string) *firestore.DocumentIterator {
+	return Client.Collection(collection).Documents(Ctx)
+}
+
+// GetDocumentRef returns a DocumentRef for the specified Firestore collection and document ID.
+func GetDocumentRef(collection, docID string) *firestore.DocumentRef {
+	return Client.Collection(collection).Doc(docID)
+}
+
+// GetDocument retrieves a DocumentSnapshot for the specified Firestore collection and document ID.
+func GetDocument(collection, docID string) (*firestore.DocumentSnapshot, error) {
+	return GetDocumentRef(collection, docID).Get(Ctx)
+}
+
+// GetDocumentByRef retrieves a DocumentSnapshot for the specified DocumentRef.
+func GetDocumentByRef(docRef *firestore.DocumentRef) (*firestore.DocumentSnapshot, error) {
+	return docRef.Get(Ctx)
+}
+
+// AddToCollection adds a new document to the specified Firestore collection and returns the resulting DocumentRef, WriteResult and error.
+func AddToCollection(collection string, data any) (*firestore.DocumentRef, *firestore.WriteResult, error) {
+	return Client.Collection(collection).Add(Ctx, data)
+}
+
+// DeleteDocument deletes a document from the specified Firestore DocumentRef and returns the resulting WriteResult and error.
+func DeleteDocument(docRef *firestore.DocumentRef) (*firestore.WriteResult, error) {
+	return docRef.Delete(Ctx)
+}

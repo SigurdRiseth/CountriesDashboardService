@@ -78,7 +78,7 @@ func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 	webhook.TimeChanged = timeNow
 
 	// Write the document to Firestore
-	id, _, err := firebase.Client.Collection(notificationsCollection).Add(firebase.Ctx, webhook)
+	id, _, err := firebase.AddToCollection(notificationsCollection, webhook)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -119,10 +119,10 @@ func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Reference to the specific document
-	docRef := firebase.Client.Collection(notificationsCollection).Doc(id)
+	docRef := firebase.GetDocumentRef(notificationsCollection, id)
 
 	// Check if document exists first (to distinguish between not-found and other errors)
-	doc, err := docRef.Get(firebase.Ctx)
+	doc, err := firebase.GetDocumentByRef(docRef)
 	if err != nil {
 		// Firestore returns a generic error for not found
 		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
@@ -134,7 +134,7 @@ func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Attempt to delete the document
-	if _, err := docRef.Delete(firebase.Ctx); err != nil {
+	if _, err := firebase.DeleteDocument(docRef); err != nil {
 		sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -170,11 +170,8 @@ func retrieveWebhook(writer http.ResponseWriter, request *http.Request) {
 // - request: *http.Request containing the request data
 // - id: string representing the Firestore document ID
 func retrieveSpecificWebhook(writer http.ResponseWriter, request *http.Request, id string) {
-	// Retrieve specific message based on id (Firestore-generated hash)
-	res := firebase.Client.Collection(notificationsCollection).Doc(id)
-
 	// Retrieve reference to document
-	doc, err := res.Get(firebase.Ctx)
+	doc, err := firebase.GetDocument(notificationsCollection, id)
 	if err != nil {
 		sendErrorResponse(writer, "Error extracting body of returned document of message "+id, http.StatusInternalServerError)
 		return
@@ -202,7 +199,7 @@ func retrieveSpecificWebhook(writer http.ResponseWriter, request *http.Request, 
 // - request: *http.Request containing the request data
 func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
 	// Retrieve all messages
-	iter := firebase.Client.Collection(notificationsCollection).Documents(firebase.Ctx)
+	iter := firebase.GetCollectionIterator(notificationsCollection)
 
 	// Prepare a slice to hold all messages
 	var messages []consts.WebhookRegistration
@@ -235,7 +232,7 @@ func CheckWebhooks(country, event, id string) {
 	timeStamp := time.Now().Format(time.RFC3339)
 
 	// Retrieve all webhook registrations from Firestore
-	iter := firebase.Client.Collection(notificationsCollection).Documents(firebase.Ctx)
+	iter := firebase.GetCollectionIterator(notificationsCollection)
 
 	var webhooks []consts.WebhookRegistration
 	for {
