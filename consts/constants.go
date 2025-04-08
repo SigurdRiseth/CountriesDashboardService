@@ -20,6 +20,8 @@ const (
 	BaseRegistrationPath = "/dashboard/v1/registrations/"
 	BaseStatusPath       = "/dashboard/v1/status/"
 	BaseNotificationPath = "/dashboard/v1/notifications/"
+
+	PortInUse = "8080"
 )
 
 // Mock/Test Endpoints for Dashboards
@@ -38,6 +40,7 @@ const (
 
 // Query parameter keys
 const (
+	Dash              = "/"
 	QueryParamID      = "id"
 	QueryParamName    = "/name/"
 	CurrencyParam     = "/currency/"
@@ -55,6 +58,10 @@ const (
 	LogGetAll        = "Retrieving all dashboard configurations "
 	LogPutProcessing = "Processing PUT request for dashboard configuration "
 	LogGETForService = "Processing GET request for service status"
+
+	LogServerStarted  = "Server started on port"
+	LogStartingServer = "Starting server..."
+	LogColon          = ":"
 )
 
 // Errors

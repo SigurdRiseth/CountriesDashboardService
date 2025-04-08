@@ -1,6 +1,7 @@
 package main
 
 import (
+	"CountriesDashboardService/consts"
 	"CountriesDashboardService/firebase"
 	"CountriesDashboardService/handlers"
 	"CountriesDashboardService/utils"
@@ -11,7 +12,7 @@ import (
 // main is the entry point for the application.
 // It starts the HTTP server on port 8080 and registers the routes.
 func main() {
-	log.Println("Starting server...")
+	log.Println(consts.LogStartingServer)
 
 	// Initialize Firebase and Firestore
 	firebase.InitFirebase()
@@ -19,19 +20,19 @@ func main() {
 
 	// Start the server
 	router := http.NewServeMux()
-	port := "8080"
+	port := consts.PortInUse
 
 	// Register the routes
-	router.HandleFunc("/", handlers.Home)
-	router.HandleFunc("/dashboard/v1/registrations/", handlers.HandleRegistrations)
-	router.HandleFunc("/dashboard/v1/notifications/", handlers.HandleNotifications)
-	router.HandleFunc("/dashboard/v1/dashboards/", handlers.ViewDashboard)
-	router.HandleFunc("/dashboard/v1/status/", handlers.HandleStatus)
+	router.HandleFunc(consts.Dash, handlers.Home)
+	router.HandleFunc(consts.BaseRegistrationPath, handlers.HandleRegistrations)
+	router.HandleFunc(consts.BaseNotificationPath, handlers.HandleNotifications)
+	router.HandleFunc(consts.BaseDashboardPath, handlers.ViewDashboard)
+	router.HandleFunc(consts.BaseDashboardPath, handlers.HandleStatus)
 
 	//Calling start time
 	utils.InitStartTime()
 
 	// Log a message indicating the server has started
-	log.Println("Server started on port " + port)
-	log.Fatal(http.ListenAndServe(":"+port, router))
+	log.Println(consts.LogServerStarted + port)
+	log.Fatal(http.ListenAndServe(consts.LogColon+port, router))
 }
