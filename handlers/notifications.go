@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"errors"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 	"log"
 	"net/http"
@@ -189,6 +191,10 @@ func retrieveSpecificWebhook(writer http.ResponseWriter, request *http.Request, 
 	// Retrieve reference to document
 	doc, err := getDocument(notificationsCollection, id)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			sendErrorResponse(writer, "Webhook not found", http.StatusNotFound)
+			return
+		}
 		sendErrorResponse(writer, "Error extracting body of returned document of message "+id, http.StatusInternalServerError)
 		return
 	}

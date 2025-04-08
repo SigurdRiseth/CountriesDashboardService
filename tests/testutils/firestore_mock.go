@@ -1,6 +1,10 @@
 package testutils
 
-import "cloud.google.com/go/firestore"
+import (
+	"cloud.google.com/go/firestore"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
 
 // MockAddToCollection simulates adding a document to a Firestore collection.
 // It returns a mock DocumentRef (with id = "mockID"), WriteResult, and no error.
@@ -27,4 +31,11 @@ func MockFirebaseClientInitialized() bool {
 func MockDocumentExists(docRef *firestore.DocumentSnapshot) bool {
 	// Simulate checking if a document exists
 	return true
+}
+
+func MockGetDocument(collection, docID string) (*firestore.DocumentSnapshot, error) {
+	if docID == "mockID" {
+		return &firestore.DocumentSnapshot{}, nil
+	}
+	return nil, status.Error(codes.NotFound, "Document not found")
 }

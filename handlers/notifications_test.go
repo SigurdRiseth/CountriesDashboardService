@@ -10,6 +10,17 @@ import (
 	"testing"
 )
 
+func init() {
+	// Mock the firestore functions to avoid actual Firestore calls
+	deleteDocument = testutils.MockDeleteDocument
+	getDocumentRef = testutils.MockGetDocumentRef
+	getDocumentByRef = testutils.MockGetDocumentByRef
+	firebaseClientInitialized = testutils.MockFirebaseClientInitialized
+	exists = testutils.MockDocumentExists
+	addToCollection = testutils.MockAddToCollection
+	getDocument = testutils.MockGetDocument
+}
+
 // TestIllegalRequest tests the HandleNotifications function for an unsupported HTTP method.
 func TestIllegalRequest(t *testing.T) {
 	req, err := http.NewRequest(http.MethodPut, "/dashboard/v1/notifications/", nil)
@@ -31,8 +42,6 @@ func TestIllegalRequest(t *testing.T) {
 }
 
 func TestRegisteringValidJSON(t *testing.T) {
-
-	addToCollection = testutils.MockAddToCollection
 
 	// Create a request with a valid JSON body
 	req, err := http.NewRequest(http.MethodPost, "/dashboard/v1/notifications/", bytes.NewReader([]byte(`{"event":"DELETE"}`)))
@@ -196,12 +205,6 @@ func TestDeleteWebhookNoID(t *testing.T) {
 }
 
 func TestDeleteWebhookValidID(t *testing.T) {
-	// Mock the deleteDocument function
-	deleteDocument = testutils.MockDeleteDocument
-	getDocumentRef = testutils.MockGetDocumentRef
-	getDocumentByRef = testutils.MockGetDocumentByRef
-	firebaseClientInitialized = testutils.MockFirebaseClientInitialized
-	exists = testutils.MockDocumentExists
 
 	// Create a request with a valid ID
 	req, err := http.NewRequest(http.MethodDelete, "/dashboard/v1/notifications/?id=mockID", nil)
@@ -219,5 +222,25 @@ func TestDeleteWebhookValidID(t *testing.T) {
 	if rr.Code != http.StatusNoContent {
 		t.Errorf("Handler returned wrong status code: got %v want %v",
 			rr.Code, http.StatusNoContent)
+	}
+}
+
+func TestGetWebhookUnusedID(t *testing.T) {
+	// Create a request with an unused ID
+	req, err := http.NewRequest(http.MethodGet, "/dashboard/v1/notifications/?id=unused", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a ResponseRecorder to record the response
+	rr := httptest.NewRecorder()
+
+	// Call the HandleNotifications function with the request and recorder
+	HandleNotifications(rr, req)
+
+	// Check the status code
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("Handler returned wrong status code: got %v want %v",
+			rr.Code, http.StatusNotFound)
 	}
 }
