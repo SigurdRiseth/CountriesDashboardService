@@ -250,7 +250,7 @@ func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
 
 // CheckWebhooks checks for registered webhooks that match the given country and event,
 // and triggers a webhook call for each matching registration.
-func CheckWebhooks(country, event, id string) {
+var CheckWebhooks = func(country, event, id string) {
 	timeStamp := time.Now().Format(time.RFC3339)
 
 	// Retrieve all webhook registrations from Firestore

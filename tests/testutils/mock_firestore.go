@@ -20,3 +20,8 @@ func (m *MockFirestoreClient) Get(ctx context.Context, id string) (*firestore.Do
 func (m *MockFirestoreClient) Delete(ctx context.Context, id string) error {
 	return m.DeleteFunc(ctx, id)
 }
+
+func MockCheckWebhooks(country, event, id string) {
+	// Mock implementation of webhook checking
+	return
+}

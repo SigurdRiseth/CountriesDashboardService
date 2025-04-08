@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"CountriesDashboardService/consts"
+	"CountriesDashboardService/tests/testutils"
 	"CountriesDashboardService/utils"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,10 @@ import (
 	"net/http/httptest"
 	"testing"
 )
+
+func init() {
+	CheckWebhooks = testutils.MockCheckWebhooks
+}
 
 func TestViewDashboard_Success(t *testing.T) {
 	// Stub DB call

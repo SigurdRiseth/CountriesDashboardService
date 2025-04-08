@@ -102,7 +102,7 @@ func Test_addDashboardConfiguration(t *testing.T) {
 		}
 	}`
 
-	req := httptest.NewRequest(http.MethodPost, consts.RegistrationEndpoint, strings.NewReader(reqBody))
+	req := httptest.NewRequest(http.MethodPost, consts.BaseRegistrationPath, strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -222,7 +222,7 @@ func Test_getDashboardConfigFromDB(t *testing.T) {
 // Test_handleHeadRequest confirms that a HEAD request returns a 200 OK status
 // with an empty body, simulating successful endpoint availability checking.
 func Test_handleHeadRequest(t *testing.T) {
-	req := httptest.NewRequest(http.MethodHead, consts.RegistrationEndpoint, nil)
+	req := httptest.NewRequest(http.MethodHead, consts.BaseRegistrationPath, nil)
 	rec := httptest.NewRecorder()
 
 	// Mock the function to return an empty list
@@ -256,7 +256,7 @@ func Test_handlePatchRequest(t *testing.T) {
 	}`
 
 	// Simulate request with an ID in the query
-	req := httptest.NewRequest(http.MethodPatch, consts.RegistrationEndpoint+"?id=test-id", strings.NewReader(reqBody))
+	req := httptest.NewRequest(http.MethodPatch, consts.BaseRegistrationPath+"?id=test-id", strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -303,7 +303,7 @@ func Test_replaceDashboardConfiguration(t *testing.T) {
 	}`
 
 	// Create test HTTP request
-	req := httptest.NewRequest(http.MethodPut, consts.RegistrationEndpoint+"?id=test-id", strings.NewReader(reqBody))
+	req := httptest.NewRequest(http.MethodPut, consts.BaseRegistrationPath+"?id=test-id", strings.NewReader(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
 
@@ -340,7 +340,7 @@ func Test_replaceDashboardConfiguration(t *testing.T) {
 // Test_replaceDashboardConfiguration_DBError simulates a database failure scenario during a PUT operation,
 // verifying that the handler returns a 500 Internal Server Error.
 func Test_replaceDashboardConfiguration_DBError(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPut, consts.RegistrationEndpoint+"?id=faulty-id", strings.NewReader(
+	req := httptest.NewRequest(http.MethodPut, consts.BaseRegistrationPath+"?id=faulty-id", strings.NewReader(
 		`{"country": "X", "isoCode": "X", "features": {}}`))
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
