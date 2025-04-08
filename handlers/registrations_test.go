@@ -40,6 +40,8 @@ func fakeSendErrorResponse(w http.ResponseWriter, message string, statusCode int
 	http.Error(w, message, statusCode)
 }
 
+// TestHandleRegistrations ensures that the central request router delegates to the correct handler
+// based on HTTP method (POST, GET, HEAD, PUT, DELETE, PATCH), and handles unsupported methods properly.
 func TestHandleRegistrations(t *testing.T) {
 	// Inject mocks
 	addDashboardConfigurationFunc = fakeAddDashboardConfiguration
@@ -83,7 +85,8 @@ func TestHandleRegistrations(t *testing.T) {
 	}
 }
 
-// Test POST request with valid payload → should return 201 Created with document ID and timestamp.
+// Test_addDashboardConfiguration verifies that a POST request with a valid JSON payload
+// results in a successful configuration addition, returning a 201 status and a response with ID and timestamp.
 func Test_addDashboardConfiguration(t *testing.T) {
 	reqBody := `{
 		"country": "Norway",
@@ -127,7 +130,8 @@ func Test_addDashboardConfiguration(t *testing.T) {
 	}
 }
 
-// DELETE request with valid ID → should return 204 No Content.
+// Test_deleteDashboardConfiguration confirms that a DELETE request with a valid ID
+// correctly deletes the config and returns 204 No Content.
 func Test_deleteDashboardConfiguration(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/dashboard/v1/registrations/?id=test-id", nil)
 	rec := httptest.NewRecorder()
@@ -147,7 +151,8 @@ func Test_deleteDashboardConfiguration(t *testing.T) {
 	}
 }
 
-// Test getAllDashboardConfigsFromDB with valid request
+// Test_getAllDashboardConfigsFromDB checks that fetching all dashboard configurations
+// from the mock returns the expected dataset without error.
 func Test_getAllDashboardConfigsFromDB(t *testing.T) {
 	// Setup: mock override
 	GetAllDashboardConfigsFunc = func() ([]consts.RegistrationRequestBody, error) {
@@ -181,7 +186,8 @@ func Test_getAllDashboardConfigsFromDB(t *testing.T) {
 	}
 }
 
-// Test getDashboardConfigFromDB with valid ID
+// Test_getDashboardConfigFromDB ensures that retrieving a specific dashboard configuration by ID
+// returns the expected structure when the ID is valid.
 func Test_getDashboardConfigFromDB(t *testing.T) {
 	expected := &consts.RegistrationRequestBody{
 		Country: "Norway",
@@ -213,7 +219,8 @@ func Test_getDashboardConfigFromDB(t *testing.T) {
 	}
 }
 
-// Test HEAD request → should return 200 OK with an empty body.
+// Test_handleHeadRequest confirms that a HEAD request returns a 200 OK status
+// with an empty body, simulating successful endpoint availability checking.
 func Test_handleHeadRequest(t *testing.T) {
 	req := httptest.NewRequest(http.MethodHead, consts.RegistrationEndpoint, nil)
 	rec := httptest.NewRecorder()
@@ -238,6 +245,8 @@ func Test_handleHeadRequest(t *testing.T) {
 	}
 }
 
+// Test_handlePatchRequest validates that a PATCH request with valid feature updates and an ID
+// leads to a successful partial update and returns a 204 No Content response.
 func Test_handlePatchRequest(t *testing.T) {
 	reqBody := `{
 		"features": {
@@ -275,6 +284,8 @@ func Test_handlePatchRequest(t *testing.T) {
 	}
 }
 
+// Test_replaceDashboardConfiguration tests that a full PUT update with valid input and ID
+// triggers a replacement in the database and results in a 204 No Content response.
 func Test_replaceDashboardConfiguration(t *testing.T) {
 	// Request body with valid config
 	reqBody := `{
@@ -326,6 +337,8 @@ func Test_replaceDashboardConfiguration(t *testing.T) {
 
 }
 
+// Test_replaceDashboardConfiguration_DBError simulates a database failure scenario during a PUT operation,
+// verifying that the handler returns a 500 Internal Server Error.
 func Test_replaceDashboardConfiguration_DBError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPut, consts.RegistrationEndpoint+"?id=faulty-id", strings.NewReader(
 		`{"country": "X", "isoCode": "X", "features": {}}`))
@@ -346,7 +359,8 @@ func Test_replaceDashboardConfiguration_DBError(t *testing.T) {
 	}
 }
 
-// Test sendErrorResponse with a valid message and status code, and that message is the right type.
+// Test_sendErrorResponse verifies the structure and content of error responses, ensuring
+// proper status code, message body, and content type for known errors.
 func Test_sendErrorResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
 	expectedMessage := "Something went wrong"
@@ -368,7 +382,8 @@ func Test_sendErrorResponse(t *testing.T) {
 	}
 }
 
-// Test sendErrorResponse with an empty message and a valid status code 404.
+// Test_sendErrorResponse_EmptyMessage confirms that an error response with an empty message
+// and 404 status code still sends a compliant response with the correct code.
 func Test_sendErrorResponse_EmptyMessage(t *testing.T) {
 	rr := httptest.NewRecorder()
 	sendErrorResponse(rr, "", http.StatusNotFound)
@@ -381,6 +396,9 @@ func Test_sendErrorResponse_EmptyMessage(t *testing.T) {
 	}
 }
 
+// Test_viewDashboardConfiguration contains two subtests:
+//   - "with ID": Ensures fetching a single config by ID returns the correct result.
+//   - "without ID": Verifies that all configs are returned when no ID is provided.
 func Test_viewDashboardConfiguration(t *testing.T) {
 	t.Run("with ID - fetch single config", func(t *testing.T) {
 		expected := &consts.RegistrationRequestBody{
