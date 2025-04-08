@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"CountriesDashboardService/consts"
 	"CountriesDashboardService/tests/testutils"
 	"net/http"
 	"net/http/httptest"
@@ -21,9 +20,9 @@ func TestStatusWithMockedServices(t *testing.T) {
 	defer currencyMock.Close()
 
 	// Override API endpoints
-	consts.RestCountriesAPI = countriesMock.URL
-	consts.OpenMeteoAPI = meteoMock.URL
-	consts.CurrencyAPI = currencyMock.URL
+	//consts.RestCountriesAPI = countriesMock.URL
+	//consts.OpenMeteoAPI = meteoMock.URL
+	//consts.CurrencyAPI = currencyMock.URL
 
 	// Mock the firebase functions
 	CountWebhooksFunc = func() (int64, error) {

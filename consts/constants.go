@@ -10,6 +10,8 @@ const (
 	RestCountriesAPI = "http://129.241.150.113:8080/v3.1"
 	OpenMeteoAPI     = "https://api.open-meteo.com/v1/forecast"
 	CurrencyAPI      = "http://129.241.150.113:9090/currency"
+
+	WeatherURL = "%s?latitude=%.2f&longitude=%.2f&hourly=temperature_2m,precipitation"
 )
 
 // API Endpoint Base Paths
@@ -36,7 +38,8 @@ const (
 
 // Query parameter keys
 const (
-	QueryParamID = "id"
+	QueryParamID   = "id"
+	QueryParamName = "/name/"
 )
 
 // Logging message templates (optional, can be used in `log.Printf`)
@@ -52,8 +55,11 @@ const (
 
 // Errors
 const (
-	MissingIDParamInURL = "Missing configuration ID in URL path"
-	NotFound            = "not found"
+	MissingIDParamInURL   = "Missing configuration ID in URL path"
+	NotFound              = "not found"
+	ClosingResponseBody   = "Error closing response body: "
+	FailedEncodeJSON      = "Failed to encode response as JSON: "
+	ErrorEncodingResponse = "Error encoding response: "
 )
 
 const (
