@@ -1,7 +1,6 @@
 package firebase
 
 import (
-	"CountriesDashboardService/consts"
 	"cloud.google.com/go/firestore"
 	"context"
 	"firebase.google.com/go"
@@ -102,16 +101,6 @@ func SetDocument(collection, id string, content any) error {
 		return fmt.Errorf("error setting document: %v", err)
 	}
 	return nil
-}
-
-// FirebaseClientInitialized checks if the Firestore client is initialized.
-// It returns true if the client is initialized, false otherwise.
-func FirebaseClientInitialized() bool {
-	if Client == nil {
-		log.Println(consts.FTNotInitialized)
-		return false
-  }
-  return true
 }
 
 // UpdateDocument updates a document with the specified data and returns an error if it fails.
