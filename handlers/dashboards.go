@@ -67,8 +67,8 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	// Fetch configuration from Firestore
 	config, err := GetDashboardConfigFromDBFunc(id)
 	if err != nil {
-		http.Error(writer, "Failed to retrieve dashboard configuration from database", http.StatusInternalServerError)
-		log.Println("Error retrieving configuration:", err)
+		http.Error(writer, consts.FailedRetrieveDBConfig, http.StatusInternalServerError)
+		log.Println(consts.LogErrorRetrievingConfig, err)
 		return
 	}
 
@@ -84,8 +84,8 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	// Fetch country data
 	countryData := FetchCountryDataFunc(config.Country)
 	if countryData == nil {
-		log.Println("Error retrieving country data")
-		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
+		log.Println(consts.LogErrorRetrievingCountryData)
+		http.Error(writer, consts.FailedToFetchCountryData, http.StatusInternalServerError)
 		return
 	}
 
@@ -107,7 +107,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	CheckWebhooks(config.IsoCode, Invoke, id)
-	log.Println("Dashboard response sent successfully:", response)
+	log.Println(consts.LogDBResponseSent, response)
 }
 
 // populateCountryFeatures populates country-related features in the dashboard response.
@@ -204,17 +204,17 @@ func fetchCountryData(countryName string) map[string]interface{} {
 
 	// Trying to get cached country info
 	if cached, found, err := cache.GetCachedCountryInfo(ctx, countryName, maxAge); err != nil && found {
-		log.Println("Country data cache HIT for: ", countryName)
+		log.Println(consts.LogCountryDataCacheHIT, countryName)
 		return cached.(map[string]interface{})
 	} else if err != nil {
-		log.Println("Country data cache MISS for: ", countryName, "-", err)
+		log.Println(consts.LogCountryDataCacheMISS, countryName, "-", err)
 	}
 
 	// Falling to fetching from external API
 	url := consts.RestCountriesAPI + consts.QueryParamName + countryName
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error fetching country data:", err)
+		log.Println(consts.FailedToFetchCountryData, err)
 		return nil
 	}
 	defer func() {
@@ -225,7 +225,7 @@ func fetchCountryData(countryName string) map[string]interface{} {
 
 	var data []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data) == 0 {
-		log.Println("Error decoding country data:", err)
+		log.Println(consts.LogErrorDecodeCurrency, err)
 		return nil
 	}
 
@@ -233,7 +233,7 @@ func fetchCountryData(countryName string) map[string]interface{} {
 
 	// Saving to cache
 	if err := cache.SaveCountryInfoToCache(countryName, countryData); err != nil {
-		log.Println("Error caching country data:", err)
+		log.Println(consts.LogErrorCacheCountryData, err)
 	}
 
 	return countryData

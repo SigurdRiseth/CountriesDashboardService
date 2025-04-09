@@ -14,7 +14,7 @@ type purgeJob struct {
 
 // StartCacheAutoPurge starts a background task to purge expired cache at intervals.
 func StartCacheAutoPurge() {
-	ticker := time.NewTicker(20 * time.Second) // Customize this interval if needed
+	ticker := time.NewTicker(6 * time.Hour) // Customize this interval if needed
 	go func() {
 		for {
 			<-ticker.C
@@ -22,9 +22,9 @@ func StartCacheAutoPurge() {
 
 			ctx := context.Background()
 			jobs := []purgeJob{
-				{Name: "CountryCache", Func: PurgeCountryCache, TTL: 20 * time.Second},
-				{Name: "WeatherCache", Func: PurgeWeatherCache, TTL: 20 * time.Second},
-				{Name: "CurrencyCache", Func: PurgeCurrencyCache, TTL: 20 * time.Second},
+				{Name: "CountryCache", Func: PurgeCountryCache, TTL: 6 * time.Hour},
+				{Name: "WeatherCache", Func: PurgeWeatherCache, TTL: 6 * time.Hour},
+				{Name: "CurrencyCache", Func: PurgeCurrencyCache, TTL: 6 * time.Hour},
 			}
 
 			for _, job := range jobs {
