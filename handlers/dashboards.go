@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"CountriesDashboardService/cache"
 	"CountriesDashboardService/consts"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -197,6 +199,18 @@ func populateWeatherFeatures(features map[string]interface{}, config *consts.Reg
 //
 // Errors are logged if the HTTP request fails or if the response cannot be decoded. The function returns nil in such cases.
 func fetchCountryData(countryName string) map[string]interface{} {
+	const maxAge = 6 * time.Hour
+	ctx := context.Background()
+
+	// Trying to get cached country info
+	if cached, found, err := cache.GetCachedCountryInfo(ctx, countryName, maxAge); err != nil && found {
+		log.Println("Country data cache HIT for: ", countryName)
+		return cached.(map[string]interface{})
+	} else if err != nil {
+		log.Println("Country data cache MISS for: ", countryName, "-", err)
+	}
+
+	// Falling to fetching from external API
 	url := consts.RestCountriesAPI + consts.QueryParamName + countryName
 	resp, err := http.Get(url)
 	if err != nil {
@@ -215,7 +229,14 @@ func fetchCountryData(countryName string) map[string]interface{} {
 		return nil
 	}
 
-	return data[0]
+	countryData := data[0]
+
+	// Saving to cache
+	if err := cache.SaveCountryInfoToCache(countryName, countryData); err != nil {
+		log.Println("Error caching country data:", err)
+	}
+
+	return countryData
 }
 
 // fetchWeatherData retrieves weather data (temperature and precipitation) from the Open-Meteo API.
@@ -233,6 +254,7 @@ func fetchCountryData(countryName string) map[string]interface{} {
 // If the request fails, the response cannot be decoded, or the expected data is not found,
 // the function logs an error and returns without modifying the features map.
 func fetchWeatherData(features map[string]interface{}, lat, lon float64, config *consts.RegistrationRequestBody) {
+
 	weatherURL := fmt.Sprintf(consts.WeatherURL, consts.OpenMeteoAPI, lat, lon)
 	resp, err := http.Get(weatherURL)
 	if err != nil {
