@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB // Stub-able function vars
-
+// Functions to be mocked for testing
+var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
 var FetchCountryDataFunc = fetchCountryData
 var FetchWeatherDataFunc = fetchWeatherData
 var FetchCurrencyDataFunc = fetchCurrencyData

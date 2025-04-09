@@ -328,18 +328,33 @@ This is the response to the delete request.
 ### Status: Monitoring service availability
 
 ## Contributors
-This project was developed by:
 
-- **[Sigurd Riseth](https://github.com/SigurdRiseth)**
-  - Contributions:
-    - Lead developer for the REST API architecture
-    - Implemented OAuth authentication
-    - Managed bug fixes and performance optimizations
+This project was developed by the following contributors:
 
-- **[Theodor Sjetnan Utvik](https://github.com/TheodorUtvik)**
-  - Contributions:
-    - Developed database schemas and cloud deployment configuration
-    - Implemented request validation and error handling
-    - Created GitHub issues and reviewed PRs
+### [**Sigurd Riseth**](https://github.com/SigurdRiseth)
+**Main Contributions:**
+- Created the initial repository and project structure
+- Implemented key methods for the `registrations` endpoint:
+  - `POST /dashboard/v1/registrations/`
+  - `GET /dashboard/v1/registrations/{id}`
+  - `GET /dashboard/v1/registrations/`
+  - `PATCH /dashboard/v1/registrations/{id}`
+  - `HEAD /dashboard/v1/registrations/`
+- Developed the `notifications` endpoint, including webhook functionality and testing
+- Deployed the service using Docker on NTNU’s OpenStack instance *SkyHigh*
 
-To view detailed contribution logs, see the [GitHub Insights](https://github.com/SigurdRiseth/CountriesDashboardService/pulse) or the [Contributors Page](https://github.com/SigurdRiseth/CountriesDashboardService/graphs/contributors).  
+---
+
+### [**Theodor Sjetnan Utvik**](https://github.com/TheodorUtvik)
+**Main Contributions:**
+- Implemented the `status` and `dashboards` endpoints
+- Contributed to the `registrations` endpoint with the following methods:
+  - `PATCH /dashboard/v1/registrations/{id}`
+  - `PUT /dashboard/v1/registrations/{id}`
+  - `DELETE /dashboard/v1/registrations/{id}`
+- Wrote and executed tests for the `registrations`, `dashboards`, and `status` endpoints
+
+---
+
+For detailed activity logs, visit the [**GitHub Insights**](https://github.com/SigurdRiseth/CountriesDashboardService/pulse) or the [**Contributors Page**](https://github.com/SigurdRiseth/CountriesDashboardService/graphs/contributors).  
+You can also explore GitHub Issues and Pull Requests for a history of discussions and changes.
