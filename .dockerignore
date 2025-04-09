@@ -1,5 +1,39 @@
-# .dockerignore
+# Git
 .git
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+
+# Development files
 *.log
-*.tmp
+.env.local
+.env.development
+
+# Build artifacts
+bin/
+build/
+dist/
+*.exe
+*.test
+*.out
+
+# Dependency directories
 vendor/
+node_modules/
+
+# IDE-specific files
+.vscode/
+.idea/
+*.swp
+*~
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Misc
+coverage/
+tmp/
+temp/

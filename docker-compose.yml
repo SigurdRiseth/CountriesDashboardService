@@ -1,14 +1,12 @@
-version: "3.9"
-
 services:
-  api:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080" # maps container:host
+      - "8080:8080"
     volumes:
-      - .:/app # optional: live code updates during development
+      - ./firebase-adminsdk.json:/app/firebase-adminsdk.json:ro
     environment:
-      - PORT=8080
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/firebase-adminsdk.json
     restart: unless-stopped
