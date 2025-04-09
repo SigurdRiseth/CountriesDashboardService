@@ -19,6 +19,11 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
 
+      #- name: Run Go Tests with Coverage
+        #run: |
+          #go test ./... -coverprofile=coverage.out
+          #go tool cover -func=coverage.out
+
       - name: Push to GitLab
         env:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}

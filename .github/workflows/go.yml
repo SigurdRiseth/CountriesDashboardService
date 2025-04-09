@@ -22,6 +22,15 @@ jobs:
       run: |
         go build -v ./...
 
+    - name: Install and Start Firestore Emulator
+      run: |
+        npm install -g firebase-tools
+        firebase setup:emulators:firestore
+        FIRESTORE_EMULATOR_HOST=localhost:8081 firebase emulators:start --only firestore --project test-project --import=./firebase_data --export-on-exit=./firebase_data &
+        sleep 10 # Give the emulator time to start
+
     - name: Test
+      env:
+        FIRESTORE_EMULATOR_HOST: localhost:8081
       run: |
         go test -race -cover -v ./...

@@ -7,6 +7,7 @@ The project is part of a group assignment where we will implement state manageme
 ## Table of Contents
 
 - [Features](#features)
+  - [Units Used in Dashboard Responses](#units-used-in-dashboard-responses)
   - [External APIs](#external-apis)
   - [Error Handling](#error-handling)
   - [Known issues](#known-issues)
@@ -14,13 +15,27 @@ The project is part of a group assignment where we will implement state manageme
 - [Setup](#setup)
 - [Deployment](#deployment)
 - [API Endpoints](#api-endpoints)
-  - [Endpoint 'Registrations': Registering dashboard configuration](#endpoint-registrations-registering-dashboard-configuration)
-  - [/dashboard/v1/dashboards/](#dashboardv1dashboards)
-  - [/dashboard/v1/notifications/](#dashboardv1notifications)
-  - [/dashboard/v1/status/](#dashboardv1status)
+  - [Registrations: Registering dashboard configuration](#registrations-registering-dashboard-configuration)
+  - [Dashboards: Retrieve populated dashboard](#dashboards-retrieve-populated-dashboard)
+  - [Notifications: Managing webhooks for event notifications](#notifications-managing-webhooks-for-event-notifications)
+  - [Status: Monitoring service availability](#status-monitoring-service-availability)
 - [Contributors](#contributors)
   
 ## Features
+
+### Units Used in Dashboard Responses
+
+When retrieving dashboard data via `/dashboard/v1/dashboards/{id}`, the values for certain features are presented in specific units:
+
+| Feature          | Unit                      |
+|------------------|---------------------------|
+| `temperature`     | Degrees Celsius (°C)      |
+| `precipitation`   | Millimeters (mm)          |
+| `area`            | Square kilometers (km²)   |
+| `population`      | Number of people          |
+| `targetCurrencies`| Exchange rate (1 base currency → target currency) |
+
+All timestamps such as `lastRetrieval` follow the **RFC3339** format, e.g., `"2025-04-03T10:15:00+01:00"`.
 
 ### External APIs
 
@@ -46,118 +61,167 @@ The services used in this application are:
 
 ## Requirements
 
-- Go 1.23
-- External APIs: CountriesNow API and RestCountries API
-- Go modules (use `go mod` for managing dependencies)
+To run and develop this project locally, make sure you have the following installed:
+
+### General
+- [Go (Golang)](https://golang.org/dl/) v1.23
+- [Docker](https://www.docker.com/) (optional for containerized deployment)
+- [Git](https://git-scm.com/) (for cloning the repository)
+- Internet access (for dependency downloads and external services)
+
+### Firebase / Google Cloud
+- A service account key JSON file with Firestore access
+  - Set the path using the `GOOGLE_APPLICATION_CREDENTIALS` environment variable in a `.env` file
+
+⚠️ Do not commit your credentials to version control.
+
+### Environment Configuration
+Create a `.env` file in the project root with the following (example format):
+
+```env
+GOOGLE_APPLICATION_CREDENTIALS=path/to/serviceAccountKey.json
+```
 
 ## Setup
 
-1. Clone the repository:
+### Local Development
 
-   ```bash
-   git clone https://github.com/SigurdRiseth/CountriesDashboardService.git
-   cd CountriesDashboardService
-    ```
-
-2.	Install dependencies (if you haven’t already):
+1. **Clone the repository**:
 
  ```bash
- go mod tidy
+ git clone https://github.com/SigurdRiseth/CountriesDashboardService.git
+ cd CountriesDashboardService
  ```
 
-3.	(optional) Create a .env file for environment variables. Here’s an example of what you might want to include:
+2. **Install dependencies** (if you haven’t already):
 
- ```bash
- PORT=8080
- ```
+```bash
+go mod tidy
+```
 
-4.	Run the service:
+3. **Create a `.env` file for environment variables** (if not already present):
 
- ```bash
- go run main.go
- ```
+```bash
+GOOGLE_APPLICATION_CREDENTIALS=path/to/serviceAccountKey.json
+```
 
-5.	The service should now be running at http://localhost:8080/.
+⚠️ Make sure the service account file exists at the specified path and has Firestore access.
+
+4. **Run the service**:
+
+```bash
+go run main.go
+```
+
+5. **Access the API**:
+
+The service will be available at `http://localhost:8080/`.
+
+### Deploy with Docker Compose
+
+1. **Ensure Docker and Docker Compose is installed** on your machine.
+
+2. **Place your Firebase service account key** in the root directory (or update the volume path accordingly).
+
+For example:
+
+```
+CountriesDashboardService/
+├── docker-compose.yml
+├── credentials.json        <-- Your service account key
+└── .env
+```
+
+3. **Build and run the Docker container**:
+
+```bash
+docker-compose up --build
+```
+
+4. **Access the API**:
+
+The service will be available at `http://localhost:8080/`.
+
+5. **To stop the service**, run:
+
+```bash
+docker-compose down
+```
 
 ## Deployment
 
-The application will be initially developed and tested locally, followed by deployment on an OpenStack instance (SkyHigh). Instructions for running and deploying the service will be provided in the setup guide.
+The application has been successfully deployed on an OpenStack instance (SkyHigh) and is accessible at the following address:
+- [http://10.212.174.14:8080](http://10.212.174.14:8080)
+
+Note: You have to be on the NTNU network (or VPN) to access this address.
 
 ## API Endpoints
 
-### Endpoint 'Registrations': Registering dashboard configuration
+### Registrations: Registering dashboard configuration
 
-The initial endpoint focuses on the management of dashboard configurations that can later be used via the `dashboards` endpoint.
+This endpoint handles the creation, retrieval, updating, and deletion of dashboard configurations. These configurations define the data to be shown in the dashboards (see the `dashboards` endpoint).
 
-#### Register new dashboard configuration:
+---
 
-Manages the registration of new dashboard configurations that indicate which information is to be shown for registered dashboards (via the `dashboards` endpoint – see later). This includes weather, country and currency exchange information.
+#### Register a New Dashboard Configuration
 
-##### - Request (POST)
+Registers a new dashboard configuration with selected features such as weather data, country info, and currency exchange rates.
 
-```
-Method: POST
-Path: /dashboard/v1/registrations/
-Content type: application/json
-```
+##### Request
 
-Body (exemplary code):
+- **Method**: `POST`
+- **Path**: `/dashboard/v1/registrations/`
+- **Content-Type**: `application/json`
 
-```json
-{
-   "country": "Norway",                                     // Indicates country name (alternatively to ISO code, i.e., country name can be empty if ISO code field is filled and vice versa)
-   "isoCode": "NO",                                         // Indicates two-letter ISO code for country (alternatively to country name)
-   "features": {
-                  "temperature": true,                      // Indicates whether temperature in degree Celsius is shown
-                  "precipitation": true,                    // Indicates whether precipitation (rain, showers and snow) is shown
-                  "capital": true,                          // Indicates whether the name of the capital is shown
-                  "coordinates": true,                      // Indicates whether country coordinates are shown
-                  "population": true,                       // Indicates whether population is shown
-                  "area": true,                             // Indicates whether land area size is shown
-                  "targetCurrencies": ["EUR", "USD", "SEK"] // Indicates which exchange rates (to target currencies) relative to the base currency of the registered country (in this case NOK for Norway) are shown
-               }
-}
-```
-
-##### - Response
-
-The response to the POST request on the endpoint stores the configuration on the server and returns the associated ID. In the example below, it is the ID `1`. Responses show be encoded in the above-mentioned JSON format, with the `lastChange` field highlighting the last change to the configuration (including updates via `PUT` – see later)
-
-- Content type: `application/json`
-- Status code: Appropriate error code. Ensure to deal with errors gracefully.
-
-Body (exemplary code for registered configuration):
+###### Example Request Body
 
 ```json
 {
-    "id": 1
-    "lastChange": "20240229 12:31"
+  "country": "Norway",
+  "isoCode": "NO",
+  "features": {
+    "temperature": true,
+    "precipitation": true,
+    "capital": true,
+    "coordinates": true,
+    "population": true,
+    "area": true,
+    "targetCurrencies": ["EUR", "USD", "SEK"]
+  }
 }
 ```
 
-#### View a specific registered dashboard configuration
+##### Response
 
-Enables retrieval of a specific registered dashboard configuration.
+- **Status Code**: `201 Created` or appropriate error code
+- **Content-Type**: `application/json`
 
-##### - Request (GET)
+###### Response Body
 
-The following shows a request for an individual configuration identified by its ID.
-
+```json
+{
+  "id": 1,
+  "lastChange": "2024-02-29 12:31"
+}
 ```
-Method: GET
-Path: /dashboard/v1/registrations/{id}
-```
 
-- id is the ID associated with the specific configuration.
+---
 
-Example request: `/dashboard/v1/registrations/1`
+#### View a Specific Dashboard Configuration
 
-##### - Response
+Retrieves a single dashboard configuration by its ID.
 
-- Content type: application/json
-- Status code: Appropriate error code. Ensure to deal with errors gracefully.
+##### Request
 
-Body (exemplary code):
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/registrations/{id}`
+
+##### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
 
 ```json
 {
@@ -177,84 +241,89 @@ Body (exemplary code):
 }
 ```
 
-#### View all registered dashboard configurations
+---
 
-Enables retrieval of all registered dashboard configurations.
+#### View All Dashboard Configurations
 
-##### - Request (GET)
+Returns all registered dashboard configurations with IDs and timestamps.
 
-A GET request to the endpoint should return all registered configurations including IDs and timestamps of last change.
+##### Request
 
-```
-Method: GET
-Path: /dashboard/v1/registrations/
-```
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/registrations/`
 
-##### - Response
+##### Response
 
-- Content type: application/json
-- Status code: Appropriate error code. Ensure to deal with errors gracefully.
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
 
-Body (exemplary code):
+###### Example Response Body
 
 ```json
 [
-   {
-      "id": 1,
-      "country": "Norway",
-      "isoCode": "NO",
-      "features": {
-                     "temperature": true,
-                     "precipitation": true,
-                     "capital": true,
-                     "coordinates": true,
-                     "population": true,
-                     "area": false,
-                     "targetCurrencies": ["EUR", "USD", "SEK"]
-                  }, 
-      "lastChange": "20240229 14:07"
-   },
-   {
-      "id": 2,
-      "country": "Denmark",
-      "isoCode": "DK",
-      "features": {
-                     "temperature": false,
-                     "precipitation": true,
-                     "capital": true,
-                     "coordinates": true,
-                     "population": false,
-                     "area": true,
-                     "targetCurrencies": ["NOK", "MYR", "JPY", "EUR"]
-                  },
-       "lastChange": "20240224 08:27"
-   },
-   ...
+  {
+    "id": 1,
+    "country": "Norway",
+    "isoCode": "NO",
+    "features": {
+      "temperature": true,
+      "precipitation": true,
+      "capital": true,
+      "coordinates": true,
+      "population": true,
+      "area": false,
+      "targetCurrencies": ["EUR", "USD", "SEK"]
+    },
+    "lastChange": "2024-02-29 14:07"
+  },
+  {
+    "id": 2,
+    "country": "Denmark",
+    "isoCode": "DK",
+    "features": {
+      "temperature": false,
+      "precipitation": true,
+      "capital": true,
+      "coordinates": true,
+      "population": false,
+      "area": true,
+      "targetCurrencies": ["NOK", "MYR", "JPY", "EUR"]
+    },
+    "lastChange": "2024-02-24 08:27"
+  }
 ]
 ```
 
-The response should return a collection of return all stored configurations.
+---
 
-**Advanced Task:** Implement the HEAD method functionality (only return the header, not the body).
+#### HEAD Request
 
-#### Replace a specific registered dashboard configuration
+Supports the ``HEAD`` method to return only the headers (e.g., status and metadata) without the response body for both `GET` requests.
+
+##### Request
+
+- **Method**: `HEAD`
+- **Paths**:
+  - `/dashboard/v1/registrations/`
+  - `/dashboard/v1/registrations/{id}`
+
+---
+
+#### Replace a Dashboard Configuration
 
 Enables the replacing of specific registered dashboard configurations.
 
 ##### - Request (PUT)
 
-The following shows a request for an updated of individual configuration identified by its ID. This update should lead to an update of the configuration and an update of the associated timestamp (lastChange).
+Updates a dashboard configuration by replacing it entirely.
 
-```
-Method: PUT
-Path: /dashboard/v1/registrations/{id}
-```
+##### Request
 
-- `id` is the ID associated with the specific configuration.
+- **Method**: `PUT`
+- **Path**: `/dashboard/v1/registrations/{id}`
+- **Content-Type**: `application/json`
 
-Example request: `/dashboard/v1/registrations/1`
-
-Body (exemplary code):
+###### Example Request Body
 
 ```json
 {
@@ -274,58 +343,293 @@ Body (exemplary code):
 
 Note that the request neither contains ID in the body (only in the URL), and neither contains the timestamp. The timestamp should be generated on the server side.
 
-**Advanced Task:** Implement the PATCH method functionality.
+##### Response
 
-##### - Response
+- **Status Code**: `204 No Content` or appropriate error code
+- **Body**: empty
 
-This is the response to the change request.
+---
 
-- Status code: Appropriate error code. Ensure to deal with errors gracefully.
-- Body: empty
+#### Partial Update (PATCH)
 
-#### Delete a specific registered dashboard configuration
+Supports partial updates to specific fields within a configuration.
 
-Enabling the deletion of a specific registered dashboard configuration.
+##### Request
 
-##### - Request (DELETE)
+- **Method**: `PATCH`
+- **Path**: `/dashboard/v1/registrations/{id}`
+- **Content-Type**: `application/json`
 
-The following shows a request for deletion of an individual configuration identified by its ID. This update should lead to a deletion of the configuration on the server.
+###### Example Request Body
 
+```json
+{
+   "features": {
+                  "temperature": false, // this value is to be changed
+                  "targetCurrencies": ["EUR", "SEK"] // this value is to be changed
+               }
+}
 ```
-Method: DELETE
-Path: /dashboard/v1/registrations/{id}
+
+##### Response
+
+- **Status Code**: `204 No Content` or appropriate error code
+- **Body**: empty
+
+---
+
+#### Delete a Dashboard Configuration
+
+Deletes a specific configuration by ID.
+
+##### Request
+
+- **Method**: `DELETE`
+- **Path**: `/dashboard/v1/registrations/{id}`
+
+##### Response
+
+- **Status Code**: `204 No Content` or appropriate error code
+- **Body**: empty
+
+--- 
+
+### Dashboards: Retrieve populated dashboard
+
+This endpoint retrieves the populated dashboard data based on the registered configuration.
+
+#### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/dashboards/{id}`
+
+#### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+    "country": "Poland",
+    "features": {
+        "area": 312679,
+        "targetCurrencies": {
+            "SEK": 2.567791
+        }
+    },
+    "isoCode": "NO",
+    "lastRetrieval": "2025-04-09T15:55:51+02:00"
+}
+```
+---
+
+### Notifications: Managing webhooks for event notifications
+
+This endpoint allows users to register and manage webhooks to receive notifications about changes and events related to dashboards and their configurations.
+
+---
+
+#### Register a Webhook
+
+This endpoint allows users to register a webhook URL to receive notifications about events related to a specific country.
+
+Supported event types:
+- `REGISTER`: Triggered when a new dashboard configuration is registered.
+- `CHANGE`: Triggered when an existing dashboard configuration is updated.
+- `DELETE`: Triggered when a dashboard configuration is deleted.
+- `INVOKE`: Triggered when a dashboard is accessed.
+
+##### Request
+
+- **Method**: `POST`
+- **Path**: `/dashboard/v1/notifications/`
+- **Content-Type**: `application/json`
+
+###### Example Request Body
+
+```json
+{
+  "country": "NO",
+  "url": "https://example.com/webhook",
+  "event": "DELETE"
+}
 ```
 
-- `id` is the ID associated with the specific configuration.
+This registers a webhook for the country "NO" to receive notifications when a dashboard configuration for this country is deleted.
 
-Example request: `/dashboard/v1/registrations/1`
+##### Response
 
-##### - Response
+- **Status Code**: `201 Created` or appropriate error code
+- **Content-Type**: `application/json`
 
-This is the response to the delete request.
+###### Example Response Body
 
-- Status code: Appropriate error code. Ensure to deal with errors gracefully.
-- Body: empty
+```json
+{
+  "id": "OIdksUDwveiwe"
+}
+```
 
-### /dashboard/v1/dashboards/
+---
 
-### /dashboard/v1/notifications/
+#### Deletion of a Webhook
 
-### /dashboard/v1/status/
+This endpoint allows users to delete a registered webhook by its ID.
+
+##### Request
+
+- **Method**: `DELETE`
+- **Path**: `/dashboard/v1/notifications/{id}`
+
+##### Response
+
+- **Status Code**: `204 No Content` or appropriate error code
+- **Body**: empty
+
+---
+
+#### View a _Specific_ Webhook
+
+This endpoint retrieves a specific webhook by its ID.
+
+##### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/notifications/{id}`
+
+##### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+  "id": "OIdksUDwveiwe",
+  "country": "NO",
+  "url": "https://example.com/webhook",
+  "event": "DELETE"
+}
+```
+
+---
+
+#### View All Webhooks
+This endpoint retrieves all registered webhooks.
+
+##### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/notifications/`
+
+##### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+[
+  {
+    "id": "OIdksUDwveiwe",
+    "country": "NO",
+    "url": "https://example.com/webhook",
+    "event": "DELETE"
+  },
+  {
+    "id": "OIdksUDwdsaiwe",
+    "country": "SE",
+    "url": "https://example.com/webhook",
+    "event": "INVOKE"
+  }
+]
+```
+
+---
+
+#### Webhook Invocation
+
+When a webhook is triggered, the service sends a (POST) notification to the registered URL with the relevant event data.
+
+##### Request
+
+- **Method**: `POST`
+- **Path**: `<url specified in the corresponding webhook registration>`
+- **Content-Type**: `application/json`
+
+###### Example Request Body
+
+```json
+{
+  "id": "OIdksUDwveiwe",
+  "country": "NO",
+  "event": "INVOKE",
+  "timestamp": "2024-02-29T14:07:00+01:00"
+}
+```
+
+---
+
+### Status: Monitoring service availability
+
+This endpoint provides a comprehensive overview of the service’s current health, dependencies, and operational metrics.
+
+#### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/status/`
+
+#### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+  "countries_api": 404,
+  "currency_api": 200,
+  "meteo_api": 200,
+  "notification_db": 200,
+  "uptime": 26,
+  "version": "v1",
+  "webhooks": 6
+}
+```
 
 ## Contributors
-This project was developed by:
 
-- **[Sigurd Riseth](https://github.com/SigurdRiseth)**
-  - Contributions:
-    - Lead developer for the REST API architecture
-    - Implemented OAuth authentication
-    - Managed bug fixes and performance optimizations
+This project was developed by the following contributors:
 
-- **[Theodor Sjetnan Utvik](https://github.com/TheodorUtvik)**
-  - Contributions:
-    - Developed database schemas and cloud deployment configuration
-    - Implemented request validation and error handling
-    - Created GitHub issues and reviewed PRs
+### [**Sigurd Riseth**](https://github.com/SigurdRiseth)
+**Main Contributions:**
+- Created the initial repository and project structure
+- Implemented key methods for the `registrations` endpoint:
+  - `POST /dashboard/v1/registrations/`
+  - `GET /dashboard/v1/registrations/{id}`
+  - `GET /dashboard/v1/registrations/`
+  - `PATCH /dashboard/v1/registrations/{id}`
+  - `HEAD /dashboard/v1/registrations/`
+- Developed the `notifications` endpoint, including webhook functionality and testing
+- Deployed the service using Docker on NTNU’s OpenStack instance *SkyHigh*
 
-To view detailed contribution logs, see the [GitHub Insights](https://github.com/SigurdRiseth/CountriesDashboardService/pulse) or the [Contributors Page](https://github.com/SigurdRiseth/CountriesDashboardService/graphs/contributors).  
+---
+
+### [**Theodor Sjetnan Utvik**](https://github.com/TheodorUtvik)
+**Main Contributions:**
+- Implemented the `status` and `dashboards` endpoints
+- Contributed to the `registrations` endpoint with the following methods:
+  - `PATCH /dashboard/v1/registrations/{id}`
+  - `PUT /dashboard/v1/registrations/{id}`
+  - `DELETE /dashboard/v1/registrations/{id}`
+- Wrote and executed tests for the `registrations`, `dashboards`, and `status` endpoints
+
+---
+
+For detailed activity logs, visit the [**GitHub Insights**](https://github.com/SigurdRiseth/CountriesDashboardService/pulse) or the [**Contributors Page**](https://github.com/SigurdRiseth/CountriesDashboardService/graphs/contributors).  
+You can also explore GitHub Issues and Pull Requests for a history of discussions and changes.
