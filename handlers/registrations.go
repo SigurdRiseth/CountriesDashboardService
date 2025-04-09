@@ -129,7 +129,7 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 		return
 	}
 	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id)
-	defer CheckWebhooks(content.IsoCode, Register, id)
+	go CheckWebhooks(content.IsoCode, Register, id)
 
 	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
@@ -320,7 +320,7 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
-	defer CheckWebhooks(content.IsoCode, Change, id)
+	go CheckWebhooks(content.IsoCode, Change, id)
 
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogUpdateSuccess, id)
@@ -386,7 +386,7 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	defer CheckWebhooks(isoCode, Delete, id)
+	go CheckWebhooks(isoCode, Delete, id)
 
 	// Return 204 No Content on successful deletion
 	writer.WriteHeader(http.StatusNoContent)
@@ -549,7 +549,7 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	defer CheckWebhooks(isoCode, Change, id)
+	go CheckWebhooks(isoCode, Change, id)
 
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogPatchSuccess, id)
