@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Countries Dashboard API</title>
+    <style>
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            background: rgba(234, 179, 96, 0.5);
+            color: #333;
+            margin: 2rem auto;
+            max-width: 900px;
+            padding: 1rem;
+            line-height: 1.75;
+        }
+
+        h1, h2 {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            color: #222;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 0.3rem;
+            margin-top: 2rem;
+        }
+
+        section {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.03);
+        }
+
+        code {
+            background: #f3f3f3;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+        }
+
+        pre {
+            background: #f3f3f3;
+            padding: 1rem;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+
+        footer {
+            font-size: 0.85rem;
+            color: #777;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+            margin-top: 4rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<h1>Countries Dashboard API</h1>
+<p>This API lets you configure and retrieve dynamic dashboards for countries, with weather, currency, and population data.</p>
+
+<section>
+    <h2>Endpoints</h2>
+    <ul>
+        <li><code>/dashboard/v1/registrations/</code> – Create and manage dashboard configurations</li>
+        <li><code>/dashboard/v1/dashboards/{id}</code> – Fetch a populated dashboard by ID</li>
+        <li><code>/dashboard/v1/notifications/</code> – Register webhooks for events</li>
+        <li><code>/dashboard/v1/status/</code> – Check API availability and uptime</li>
+    </ul>
+</section>
+
+<section>
+    <h2>Example Request – POST</h2>
+    <p><strong>Create a dashboard config</strong></p>
+    <pre><code>{
+  "country": "Norway",
+  "isoCode": "NO",
+  "features": {
+    "temperature": true,
+    "capital": true,
+    "targetCurrencies": ["USD", "EUR"]
+  }
+}</code></pre>
+</section>
+
+<section>
+    <h2>Example Request – PUT</h2>
+    <p><strong>Update entire config by ID</strong></p>
+    <pre><code>{
+  "country": "Sweden",
+  "isoCode": "SE",
+  "features": {
+    "temperature": false,
+    "area": true,
+    "targetCurrencies": ["EUR"]
+  }
+}</code></pre>
+</section>
+
+<footer>
+    <p><em>PROG2005 – Group Project</em></p>
+    <p><em>Authors: Sigurd Riseth, Theodor Sjetnan Utvik</em></p>
+    <p>
+        <a href="https://github.com/SigurdRiseth/CountriesDashboardService/" target="_blank">
+            View source on GitHub
+        </a>
+    </p>
+</footer>
+</body>
+</html>

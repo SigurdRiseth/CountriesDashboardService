@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB // Stub-able function vars
+
+var FetchCountryDataFunc = fetchCountryData
+var FetchWeatherDataFunc = fetchWeatherData
+var FetchCurrencyDataFunc = fetchCurrencyData
+
 // ViewDashboard handles HTTP GET requests to retrieve a populated dashboard configuration from Firestore.
 // It fetches the dashboard configuration for the given ID, populates the requested features (e.g., country data,
 // weather data, currency exchange rates), and returns the result as a JSON response.
@@ -47,17 +53,17 @@ import (
 //	    "lastRetrieval": "20250325 14:00"
 //	}
 func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 
 	// Extract and validate ID
-	id := request.URL.Query().Get("id")
+	id := request.URL.Query().Get(consts.QueryParamID)
 	if id == "" {
-		http.Error(writer, "Missing 'id' in URL parameters", http.StatusBadRequest)
+		http.Error(writer, consts.MissingIDParamInURL, http.StatusBadRequest)
 		return
 	}
 
 	// Fetch configuration from Firestore
-	config, err := getDashboardConfigFromDB(id)
+	config, err := GetDashboardConfigFromDBFunc(id)
 	if err != nil {
 		http.Error(writer, "Failed to retrieve dashboard configuration from database", http.StatusInternalServerError)
 		log.Println("Error retrieving configuration:", err)
@@ -74,8 +80,9 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	features := response["features"].(map[string]interface{})
 
 	// Fetch country data
-	countryData := fetchCountryData(config.Country)
+	countryData := FetchCountryDataFunc(config.Country)
 	if countryData == nil {
+		log.Println("Error retrieving country data")
 		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
 		return
 	}
@@ -93,8 +100,8 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 
 	// Encode and send response
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		http.Error(writer, "Failed to encode response as JSON", http.StatusInternalServerError)
-		log.Println("Error encoding response:", err)
+		http.Error(writer, consts.FailedEncodeJSON, http.StatusInternalServerError)
+		log.Println(consts.ErrorEncodingResponse, err)
 	}
 
 	CheckWebhooks(config.IsoCode, Invoke, id)
@@ -190,7 +197,7 @@ func populateWeatherFeatures(features map[string]interface{}, config *consts.Reg
 //
 // Errors are logged if the HTTP request fails or if the response cannot be decoded. The function returns nil in such cases.
 func fetchCountryData(countryName string) map[string]interface{} {
-	url := consts.RestCountriesAPI + "/name/" + countryName
+	url := consts.RestCountriesAPI + consts.QueryParamName + countryName
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println("Error fetching country data:", err)
@@ -198,7 +205,7 @@ func fetchCountryData(countryName string) map[string]interface{} {
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Println("Error closing response body:", err)
+			log.Println(consts.ClosingResponseBody, err)
 		}
 	}()
 
@@ -226,7 +233,7 @@ func fetchCountryData(countryName string) map[string]interface{} {
 // If the request fails, the response cannot be decoded, or the expected data is not found,
 // the function logs an error and returns without modifying the features map.
 func fetchWeatherData(features map[string]interface{}, lat, lon float64, config *consts.RegistrationRequestBody) {
-	weatherURL := fmt.Sprintf("%s?latitude=%.2f&longitude=%.2f&hourly=temperature_2m,precipitation", consts.OpenMeteoAPI, lat, lon)
+	weatherURL := fmt.Sprintf(consts.WeatherURL, consts.OpenMeteoAPI, lat, lon)
 	resp, err := http.Get(weatherURL)
 	if err != nil {
 		log.Println("Error fetching weather data:", err)
@@ -234,7 +241,7 @@ func fetchWeatherData(features map[string]interface{}, lat, lon float64, config 
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Println("Error closing response body:", err)
+			log.Println(consts.ClosingResponseBody, err)
 		}
 	}()
 
@@ -288,7 +295,7 @@ func fetchCurrencyData(features map[string]interface{}, countryData map[string]i
 	}
 	defer func() {
 		if err := resp.Body.Close(); err != nil {
-			log.Println("Error closing response body:", err)
+			log.Println(consts.ClosingResponseBody, err)
 		}
 	}()
 
