@@ -25,7 +25,7 @@ var getDocumentByRef = firebase.GetDocumentByRef
 var getDocumentRef = firebase.GetDocumentRef
 var deleteDocument = firebase.DeleteDocument
 var getCollectionIterator = firebase.GetCollectionIterator
-var firebaseClientInitialized = firebase.FirebaseClientInitialized
+var firebaseClientInitialized = firebase.IsFirebaseClientInitialized
 var exists = firebase.DocumentExists
 
 // Constants (assumed to be declared elsewhere)

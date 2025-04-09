@@ -22,6 +22,7 @@ var DeleteDashboardConfigFromDBFunc = deleteDashboardConfigFromDB
 var GetAllDashboardConfigsFunc = getAllDashboardConfigsFromDB
 var PatchDashboardConfigInDBFunc = patchDashboardConfigInDB
 var ReplaceDashboardConfigInDBFunc = replaceDashboardConfigInDB
+var isFirebaseClientInitialized = firebase.IsFirebaseClientInitialized
 
 var (
 	addDashboardConfigurationFunc     = addDashboardConfiguration
@@ -46,7 +47,6 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Registrations endpoint received " + request.Method + " request.")
 	switch request.Method {
 	case http.MethodPost:
-
 		addDashboardConfigurationFunc(writer, request)
 	case http.MethodGet:
 		viewDashboardConfigurationFunc(writer, request)
@@ -96,7 +96,6 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 //	  "lastChange": "2025-03-23T17:29:44+01:00"
 //	}
 //	```
-
 func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 
@@ -118,22 +117,23 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	content.TimeChanged = timeNow
 
 	// Check if Firebase client is initialized
-	//if firebase.Client == nil {
+	//if firebase.client == nil {
 	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
 	//	return
 	//}
 
 	// Write the document to Firestore
-	idstr, err := AddDashboardConfigToDBFunc(content)
+	id, err := AddDashboardConfigToDBFunc(content)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Document added to registrationsCollection. Identifier of returned document: " + idstr)
+	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id)
+	go CheckWebhooks(content.IsoCode, Register, id)
 
 	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
-		Id:         idstr,
+		Id:         id,
 		LastChange: timeNow,
 	}
 	writer.WriteHeader(http.StatusCreated) // 201 Created
@@ -144,10 +144,10 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 
 // addDashboardConfigurationToFirestore adds a new dashboard configuration to Firestore.
 func addDashboardConfigurationToFirestore(body consts.RegistrationRequestBody) (string, error) {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return "", fmt.Errorf(consts.FBNotInitialized)
 	}
-	docRef, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, body)
+	docRef, _, err := firebase.AddToCollection(registrationsCollection, body)
 	if err != nil {
 		return "", err
 	}
@@ -191,12 +191,9 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 //   - error: An error object if an error occurred during retrieval, otherwise nil.
 func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error) {
 	// Retrieve specific message based on id (Firestore-generated hash)
-	res := firebase.Client.Collection(registrationsCollection).Doc(id)
-
-	// Retrieve reference to document
-	doc, err := res.Get(firebase.Ctx)
+	doc, err := firebase.GetDocument(registrationsCollection, id)
 	if err != nil {
-		log.Println("Error extracting body of returned document of message " + id)
+		log.Println("Error retrieving document from Firestore: " + err.Error())
 		return nil, err
 	}
 
@@ -229,7 +226,7 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 //	}
 //	fmt.Printf("Retrieved %d configurations.\n", len(configs))
 func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
-	iter := firebase.Client.Collection(registrationsCollection).Limit(100).OrderBy("TimeChanged", firestore.Asc).Documents(firebase.Ctx)
+	iter := firebase.GetLimitedSortedDocuments(registrationsCollection, "TimeChanged", 100)
 
 	var content []consts.RegistrationRequestBody
 	for doc, err := iter.Next(); !errors.Is(err, iterator.Done); doc, err = iter.Next() {
@@ -293,7 +290,6 @@ func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
 //	                  "targetCurrencies": ["EUR", "SEK"]
 //	               }
 //	}
-
 func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	log.Println(consts.LogPutProcessing)
 
@@ -324,17 +320,17 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
+	go CheckWebhooks(content.IsoCode, Change, id)
+
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogUpdateSuccess, id)
 }
 
 func replaceDashboardConfigInDB(id string, content consts.RegistrationRequestBody) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
-
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
-	_, err := docRef.Set(firebase.Ctx, content)
+	err := firebase.SetDocument(registrationsCollection, id, content)
 	return err
 }
 
@@ -374,11 +370,12 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	}
 
 	// Check if Firebase client is initialized
-	//if firebase.Client == nil {
-	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
-	//	return
-	//}
+	if !isFirebaseClientInitialized() {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
 
+	isoCode := getIsoCodeFromDocID(id)
 	err := DeleteDashboardConfigFromDBFunc(id)
 	if err != nil {
 		if err.Error() == consts.NotFound {
@@ -389,6 +386,8 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
+	go CheckWebhooks(isoCode, Delete, id)
+
 	// Return 204 No Content on successful deletion
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogDeleteSuccess, id)
@@ -396,12 +395,12 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 
 // deleteDashboardConfigFromDB deletes a dashboard configuration from Firestore based on the provided ID.
 func deleteDashboardConfigFromDB(id string) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+	docRef := firebase.GetDocumentRef(registrationsCollection, id)
 
-	doc, err := docRef.Get(firebase.Ctx)
+	doc, err := firebase.GetDocumentByRef(docRef)
 	if err != nil {
 		return err
 	}
@@ -409,7 +408,7 @@ func deleteDashboardConfigFromDB(id string) error {
 		return fmt.Errorf(consts.NotFound)
 	}
 
-	_, err = docRef.Delete(firebase.Ctx)
+	_, err = firebase.DeleteDocument(docRef)
 	return err
 }
 
@@ -538,6 +537,8 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	isoCode := getIsoCodeFromDocID(id)
+
 	err := PatchDashboardConfigInDBFunc(id, inputJSON)
 	if err != nil {
 		if err.Error() == consts.NotFound {
@@ -548,19 +549,37 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	go CheckWebhooks(isoCode, Change, id)
+
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogPatchSuccess, id)
 }
 
+var getIsoCodeFromDocID = func(id string) string {
+	doc, err := firebase.GetDocument(registrationsCollection, id)
+	if err != nil {
+		log.Println("Error retrieving document from Firestore: " + err.Error())
+		return ""
+	}
+
+	var content consts.RegistrationRequestBody
+	if err := doc.DataTo(&content); err != nil {
+		log.Println("Error converting document data to struct.")
+		return ""
+	}
+
+	return content.IsoCode
+}
+
 // patchDashboardConfigInDB updates a dashboard configuration in Firestore based on the provided ID and input JSON.
 func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
 
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+	docRef := firebase.GetDocumentRef(registrationsCollection, id)
 
-	doc, err := docRef.Get(firebase.Ctx)
+	doc, err := firebase.GetDocumentByRef(docRef)
 	if err != nil {
 		return fmt.Errorf("error checking document existence: %w", err)
 	}
@@ -588,6 +607,6 @@ func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) err
 		Value: time.Now().Format(time.RFC3339),
 	})
 
-	_, err = docRef.Update(firebase.Ctx, updates)
+	err = firebase.UpdateDocument(docRef, updates)
 	return err
 }
