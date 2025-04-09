@@ -59,41 +59,18 @@
 <p>This API lets you configure and retrieve dynamic dashboards for countries, with weather, currency, and population data.</p>
 
 <section>
-    <h2>Endpoints</h2>
-    <ul>
-        <li><code>/dashboard/v1/registrations/</code> – Create and manage dashboard configurations</li>
-        <li><code>/dashboard/v1/dashboards/{id}</code> – Fetch a populated dashboard by ID</li>
-        <li><code>/dashboard/v1/notifications/</code> – Register webhooks for events</li>
-        <li><code>/dashboard/v1/status/</code> – Check API availability and uptime</li>
-    </ul>
+  <h2>Endpoints</h2>
+  <ul>
+    <li><code>/dashboard/v1/registrations/{?id}</code> – Create and manage dashboard configurations</li>
+    <li><code>/dashboard/v1/dashboards/{id}</code> – Fetch a populated dashboard by ID</li>
+    <li><code>/dashboard/v1/notifications/{?id}</code> – Register and manage webhooks for events</li>
+    <li><code>/dashboard/v1/status/</code> – Check API availability and uptime</li>
+  </ul>
 </section>
 
 <section>
-    <h2>Example Request – POST</h2>
-    <p><strong>Create a dashboard config</strong></p>
-    <pre><code>{
-  "country": "Norway",
-  "isoCode": "NO",
-  "features": {
-    "temperature": true,
-    "capital": true,
-    "targetCurrencies": ["USD", "EUR"]
-  }
-}</code></pre>
-</section>
-
-<section>
-    <h2>Example Request – PUT</h2>
-    <p><strong>Update entire config by ID</strong></p>
-    <pre><code>{
-  "country": "Sweden",
-  "isoCode": "SE",
-  "features": {
-    "temperature": false,
-    "area": true,
-    "targetCurrencies": ["EUR"]
-  }
-}</code></pre>
+  <h2>Documentation</h2>
+  <p>For detailed information on how to use the service, please refer to the <a href="https://github.com/SigurdRiseth/CountriesDashboardService/blob/main/README.md" target="_blank">README</a> in the GitHub repository.</p>
 </section>
 
 <footer>

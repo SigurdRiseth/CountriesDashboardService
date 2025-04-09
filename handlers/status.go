@@ -149,13 +149,13 @@ func checkServiceAvailability(url string) int {
 // Returns:
 //   - 200 if the database is accessible, 503 if it is not.
 func checkNotificationDB() int {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		log.Println(consts.FTNotInitialized)
 		return http.StatusServiceUnavailable // 503 if the client is not initialized
 	}
 
 	// Perform a simple query to check database availability
-	_, err := firebase.Client.Collection(firebase.NotificationsCollection).Limit(1).Documents(firebase.Ctx).Next()
+	_, err := firebase.GetCollectionIterator(notificationsCollection).Next()
 	if err != nil {
 		if err == iterator.Done {
 			// No documents found, but the database is accessible
@@ -176,12 +176,12 @@ func checkNotificationDB() int {
 //   - The number of webhooks as an int64.
 //   - An error if the Firestore client is not initialized or the query fails.
 func countWebhooks() (int64, error) {
-	if firebase.Client == nil {
+	if !firebaseClientInitialized() {
 		return 0, fmt.Errorf(consts.FTNotInitialized)
 	}
 
 	// Query the notifications collection and count the documents
-	docs, err := firebase.Client.Collection(firebase.NotificationsCollection).Documents(firebase.Ctx).GetAll()
+	docs, err := firebase.GetAllDocuments(notificationsCollection)
 	if err != nil {
 		return 0, fmt.Errorf(consts.QueryingWebhooks, err)
 	}

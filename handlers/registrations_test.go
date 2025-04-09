@@ -133,6 +133,8 @@ func Test_addDashboardConfiguration(t *testing.T) {
 // Test_deleteDashboardConfiguration confirms that a DELETE request with a valid ID
 // correctly deletes the config and returns 204 No Content.
 func Test_deleteDashboardConfiguration(t *testing.T) {
+	getIsoCodeFromDocID = func(id string) string { return "NO" } // Mock the function to return a fixed ISO code
+	isFirebaseClientInitialized = func() bool { return true }    // Mock the Firebase client initialization check
 	req := httptest.NewRequest(http.MethodDelete, "/dashboard/v1/registrations/?id=test-id", nil)
 	rec := httptest.NewRecorder()
 

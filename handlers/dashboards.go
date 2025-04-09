@@ -12,8 +12,8 @@ import (
 	"time"
 )
 
-var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB // Stub-able function vars
-
+// Functions to be mocked for testing
+var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
 var FetchCountryDataFunc = fetchCountryData
 var FetchWeatherDataFunc = fetchWeatherData
 var FetchCurrencyDataFunc = fetchCurrencyData
@@ -105,9 +105,9 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, consts.FailedEncodeJSON, http.StatusInternalServerError)
 		log.Println(consts.ErrorEncodingResponse, err)
 	}
-
-	CheckWebhooks(config.IsoCode, Invoke, id)
-	log.Println(consts.LogDBResponseSent, response)
+  
+	go CheckWebhooks(config.IsoCode, Invoke, id)
+	log.Println("Dashboard response sent successfully:", response)
 }
 
 // populateCountryFeatures populates country-related features in the dashboard response.
