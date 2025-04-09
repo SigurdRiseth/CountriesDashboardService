@@ -10,11 +10,23 @@ import (
 	"encoding/json"
 	"errors"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 	"log"
 	"net/http"
 	"time"
 )
+
+// Production function call
+var addToCollection = firebase.AddToCollection
+var getDocument = firebase.GetDocument
+var getDocumentByRef = firebase.GetDocumentByRef
+var getDocumentRef = firebase.GetDocumentRef
+var deleteDocument = firebase.DeleteDocument
+var getCollectionIterator = firebase.GetCollectionIterator
+var firebaseClientInitialized = firebase.FirebaseClientInitialized
+var exists = firebase.DocumentExists
 
 // Constants (assumed to be declared elsewhere)
 var (
@@ -59,10 +71,16 @@ func HandleNotifications(writer http.ResponseWriter, request *http.Request) {
 func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Content-Type", "application/json")
 
+	// Check if body is nil
+	if request.Body == nil {
+		sendErrorResponse(writer, "Empty request body", http.StatusBadRequest)
+		return
+	}
+
 	// Decode the request body into a WebhookRegistration struct
 	var webhook consts.WebhookRegistration
 	if err := json.NewDecoder(request.Body).Decode(&webhook); err != nil {
-		sendErrorResponse(writer, "Invalid JSON payload: "+err.Error(), http.StatusBadRequest)
+		sendErrorResponse(writer, "Invalid JSON payload", http.StatusBadRequest)
 		return
 	}
 
@@ -78,7 +96,7 @@ func registerWebhook(writer http.ResponseWriter, request *http.Request) {
 	webhook.TimeChanged = timeNow
 
 	// Write the document to Firestore
-	id, _, err := firebase.Client.Collection(notificationsCollection).Add(firebase.Ctx, webhook)
+	id, _, err := addToCollection(notificationsCollection, webhook)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -113,28 +131,28 @@ func deleteWebhook(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	// Check if Firebase client is initialized
-	if firebase.Client == nil {
+	if !firebaseClientInitialized() {
 		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
 		return
 	}
 
 	// Reference to the specific document
-	docRef := firebase.Client.Collection(notificationsCollection).Doc(id)
+	docRef := getDocumentRef(notificationsCollection, id)
 
 	// Check if document exists first (to distinguish between not-found and other errors)
-	doc, err := docRef.Get(firebase.Ctx)
+	doc, err := getDocumentByRef(docRef)
 	if err != nil {
 		// Firestore returns a generic error for not found
 		sendErrorResponse(writer, "Error checking document existence: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if !doc.Exists() {
+	if !exists(doc) {
 		sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
 		return
 	}
 
 	// Attempt to delete the document
-	if _, err := docRef.Delete(firebase.Ctx); err != nil {
+	if _, err := deleteDocument(docRef); err != nil {
 		sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -170,12 +188,13 @@ func retrieveWebhook(writer http.ResponseWriter, request *http.Request) {
 // - request: *http.Request containing the request data
 // - id: string representing the Firestore document ID
 func retrieveSpecificWebhook(writer http.ResponseWriter, request *http.Request, id string) {
-	// Retrieve specific message based on id (Firestore-generated hash)
-	res := firebase.Client.Collection(notificationsCollection).Doc(id)
-
 	// Retrieve reference to document
-	doc, err := res.Get(firebase.Ctx)
+	doc, err := getDocument(notificationsCollection, id)
 	if err != nil {
+		if status.Code(err) == codes.NotFound {
+			sendErrorResponse(writer, "Webhook not found", http.StatusNotFound)
+			return
+		}
 		sendErrorResponse(writer, "Error extracting body of returned document of message "+id, http.StatusInternalServerError)
 		return
 	}
@@ -202,7 +221,7 @@ func retrieveSpecificWebhook(writer http.ResponseWriter, request *http.Request, 
 // - request: *http.Request containing the request data
 func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
 	// Retrieve all messages
-	iter := firebase.Client.Collection(notificationsCollection).Documents(firebase.Ctx)
+	iter := getCollectionIterator(notificationsCollection)
 
 	// Prepare a slice to hold all messages
 	var messages []consts.WebhookRegistration
@@ -231,11 +250,11 @@ func retrieveAllWebhooks(writer http.ResponseWriter, request *http.Request) {
 
 // CheckWebhooks checks for registered webhooks that match the given country and event,
 // and triggers a webhook call for each matching registration.
-func CheckWebhooks(country, event, id string) {
+var CheckWebhooks = func(country, event, id string) {
 	timeStamp := time.Now().Format(time.RFC3339)
 
 	// Retrieve all webhook registrations from Firestore
-	iter := firebase.Client.Collection(notificationsCollection).Documents(firebase.Ctx)
+	iter := getCollectionIterator(notificationsCollection)
 
 	var webhooks []consts.WebhookRegistration
 	for {
