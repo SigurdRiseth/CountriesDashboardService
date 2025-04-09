@@ -11,7 +11,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o main ./main.go
 FROM alpine:latest
 
 WORKDIR /app
+# Copy built binary
 COPY --from=builder /app/main .
+# Copy static assets
+COPY --from=builder /app/static ./static
 
 EXPOSE 8080
 
