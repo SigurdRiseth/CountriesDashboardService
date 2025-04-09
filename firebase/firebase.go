@@ -4,8 +4,10 @@ import (
 	"cloud.google.com/go/firestore"
 	"context"
 	"firebase.google.com/go"
+	"github.com/joho/godotenv"
 	"google.golang.org/api/option"
 	"log"
+	"os"
 )
 
 // Add this line below your imports in firebase.go
@@ -24,9 +26,13 @@ func InitFirebase() {
 
 	// Initialize Firebase app
 	Ctx = context.Background()
-	sa := option.WithCredentialsFile("./firebase-adminsdk.json")
 
-	app, err := firebase.NewApp(Ctx, nil, sa)
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found")
+	}
+	opt := option.WithCredentialsFile(os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"))
+	app, err := firebase.NewApp(Ctx, nil, opt)
 	if err != nil {
 		log.Fatalf("Failed to initialize Firebase app: %v", err)
 	}
