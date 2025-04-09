@@ -89,3 +89,16 @@ const (
 	FTNotInitialized = "firestore client is not initialized"
 	IsNotFound
 )
+
+// cache
+const (
+	CacheCollection        = "cache"
+	FieldTimestamp         = "timestamp"
+	FieldData              = "data"
+	CacheCountryInfoPrefix = "country_"
+	CacheWeatherPrefix     = "weather_"
+	CacheCurrencyPrefix    = "currency_"
+
+	CacheMissFor    = "cache miss for %s: %w"
+	CacheExpiredFor = "cache expired for %s: "
+)

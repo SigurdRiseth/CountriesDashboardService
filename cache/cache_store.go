@@ -8,15 +8,6 @@ import (
 	"time"
 )
 
-const (
-	cacheCollection        = "cache"
-	fieldTimestamp         = "timestamp"
-	fieldData              = "data"
-	cacheCountryInfoPrefix = "country_"
-	cacheWeatherPrefix     = "weather_"
-	cacheCurrencyPrefix    = "currency_"
-)
-
 // CacheItem defines a cached Firestore document
 type CacheItem struct {
 	Timestamp time.Time   `firestore:"timestamp"`
@@ -33,9 +24,9 @@ func setCache(key string, data interface{}) error {
 	if firebase.Client == nil {
 		return fmt.Errorf(consts.FTNotInitialized)
 	}
-	_, err := firebase.Client.Collection(cacheCollection).Doc(key).Set(firebase.Ctx, map[string]interface{}{
-		fieldTimestamp: time.Now(),
-		fieldData:      data,
+	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(key).Set(firebase.Ctx, map[string]interface{}{
+		consts.FieldTimestamp: time.Now(),
+		consts.FieldData:      data,
 	})
 	return err
 }
@@ -44,7 +35,7 @@ func setCache(key string, data interface{}) error {
 func getCache[T any](ctx context.Context, collection, key string, maxAge time.Duration) (*T, time.Time, error) {
 	doc, err := firebase.Client.Collection(collection).Doc(key).Get(ctx)
 	if err != nil {
-		return nil, time.Time{}, fmt.Errorf("cache miss for %s: %w", key, err)
+		return nil, time.Time{}, fmt.Errorf(consts.CacheMissFor, key, err)
 	}
 
 	var entry struct {
@@ -61,57 +52,57 @@ func getCache[T any](ctx context.Context, collection, key string, maxAge time.Du
 
 // GetCachedCountryInfo retrieves cached country information
 func GetCachedCountryInfo(ctx context.Context, country string, maxAge time.Duration) (interface{}, bool, error) {
-	key := cacheCountryInfoPrefix + country
-	data, ts, err := getCache[interface{}](ctx, cacheCollection, key, maxAge)
+	key := consts.CacheCountryInfoPrefix + country
+	data, ts, err := getCache[interface{}](ctx, consts.CacheCollection, key, maxAge)
 	if err != nil {
 		return nil, false, err
 	}
 	if isCacheExpired(ts, maxAge) {
-		return nil, false, fmt.Errorf("cache expired for %s", key)
+		return nil, false, fmt.Errorf(consts.CacheExpiredFor, key)
 	}
 	return *data, true, nil
 }
 
 // SaveCountryInfoToCache stores country information in the cache
 func SaveCountryInfoToCache(country string, data interface{}) error {
-	key := cacheCountryInfoPrefix + country
+	key := consts.CacheCountryInfoPrefix + country
 	return setCache(key, data)
 }
 
 // GetCachedWeather retrieves cached weather information
 func GetCachedWeather(ctx context.Context, locationKey string, maxAge time.Duration) (interface{}, bool, error) {
-	key := cacheWeatherPrefix + locationKey
-	data, ts, err := getCache[interface{}](ctx, cacheCollection, key, maxAge)
+	key := consts.CacheWeatherPrefix + locationKey
+	data, ts, err := getCache[interface{}](ctx, consts.CacheCollection, key, maxAge)
 	if err != nil {
 		return nil, false, err
 	}
 	if isCacheExpired(ts, maxAge) {
-		return nil, false, fmt.Errorf("cache expired for %s", key)
+		return nil, false, fmt.Errorf(consts.CacheExpiredFor, key)
 	}
 	return *data, true, nil
 }
 
 // SaveWeatherToCache stores weather information in the cache
 func SaveWeatherToCache(locationKey string, data interface{}) error {
-	key := cacheWeatherPrefix + locationKey
+	key := consts.CacheWeatherPrefix + locationKey
 	return setCache(key, data)
 }
 
 // GetCachedCurrencyRates retrieves cached currency rates
 func GetCachedCurrencyRates(ctx context.Context, baseCurrency string, maxAge time.Duration) (interface{}, bool, error) {
-	key := cacheCurrencyPrefix + baseCurrency
-	data, ts, err := getCache[interface{}](ctx, cacheCollection, key, maxAge)
+	key := consts.CacheCurrencyPrefix + baseCurrency
+	data, ts, err := getCache[interface{}](ctx, consts.CacheCollection, key, maxAge)
 	if err != nil {
 		return nil, false, err
 	}
 	if isCacheExpired(ts, maxAge) {
-		return nil, false, fmt.Errorf("cache expired for %s", key)
+		return nil, false, fmt.Errorf(consts.CacheExpiredFor, key)
 	}
 	return *data, true, nil
 }
 
 // SaveCurrencyRatesToCache stores currency rates in the cache
 func SaveCurrencyRatesToCache(baseCurrency string, data interface{}) error {
-	key := cacheCurrencyPrefix + baseCurrency
+	key := consts.CacheCurrencyPrefix + baseCurrency
 	return setCache(key, data)
 }
