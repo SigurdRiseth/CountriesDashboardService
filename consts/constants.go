@@ -2,7 +2,8 @@ package consts
 
 // Firestore Collections
 const (
-	RegistrationsCollection = "registrations"
+	RegistrationsCollection  = "registrations"
+	DashboardCacheCollection = "dashboardCache"
 )
 
 // External API URLs
