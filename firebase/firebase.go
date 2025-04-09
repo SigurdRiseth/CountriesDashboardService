@@ -1,6 +1,7 @@
 package firebase
 
 import (
+	"CountriesDashboardService/consts"
 	"cloud.google.com/go/firestore"
 	"context"
 	"firebase.google.com/go"
@@ -103,6 +104,16 @@ func SetDocument(collection, id string, content any) error {
 	return nil
 }
 
+// FirebaseClientInitialized checks if the Firestore client is initialized.
+// It returns true if the client is initialized, false otherwise.
+func FirebaseClientInitialized() bool {
+	if Client == nil {
+		log.Println(consts.FTNotInitialized)
+		return false
+  }
+  return true
+}
+
 // UpdateDocument updates a document with the specified data and returns an error if it fails.
 func UpdateDocument(docRef *firestore.DocumentRef, data []firestore.Update) error {
 	_, err := docRef.Update(ctx, data)
@@ -125,4 +136,10 @@ func IsFirebaseClientInitialized() bool {
 // DocumentExists checks if a document exists in Firestore.
 func DocumentExists(doc *firestore.DocumentSnapshot) bool {
 	return doc.Exists()
+}
+
+// NewClient initializes and returns a Firestore client using the given context and project ID.
+// This is used mainly in tests where we want to manually manage the client.
+func NewClient(ctx context.Context, projectID string) (*firestore.Client, error) {
+	return firestore.NewClient(ctx, projectID)
 }

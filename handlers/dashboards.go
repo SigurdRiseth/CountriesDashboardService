@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"CountriesDashboardService/cache"
 	"CountriesDashboardService/consts"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -65,8 +67,8 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	// Fetch configuration from Firestore
 	config, err := GetDashboardConfigFromDBFunc(id)
 	if err != nil {
-		http.Error(writer, "Failed to retrieve dashboard configuration from database", http.StatusInternalServerError)
-		log.Println("Error retrieving configuration:", err)
+		http.Error(writer, consts.FailedRetrieveDBConfig, http.StatusInternalServerError)
+		log.Println(consts.LogErrorRetrievingConfig, err)
 		return
 	}
 
@@ -82,8 +84,8 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 	// Fetch country data
 	countryData := FetchCountryDataFunc(config.Country)
 	if countryData == nil {
-		log.Println("Error retrieving country data")
-		http.Error(writer, "Failed to fetch country data", http.StatusInternalServerError)
+		log.Println(consts.LogErrorRetrievingCountryData)
+		http.Error(writer, consts.FailedToFetchCountryData, http.StatusInternalServerError)
 		return
 	}
 
@@ -103,7 +105,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, consts.FailedEncodeJSON, http.StatusInternalServerError)
 		log.Println(consts.ErrorEncodingResponse, err)
 	}
-
+  
 	go CheckWebhooks(config.IsoCode, Invoke, id)
 	log.Println("Dashboard response sent successfully:", response)
 }
@@ -197,10 +199,22 @@ func populateWeatherFeatures(features map[string]interface{}, config *consts.Reg
 //
 // Errors are logged if the HTTP request fails or if the response cannot be decoded. The function returns nil in such cases.
 func fetchCountryData(countryName string) map[string]interface{} {
+	const maxAge = 6 * time.Hour
+	ctx := context.Background()
+
+	// Trying to get cached country info
+	if cached, found, err := cache.GetCachedCountryInfo(ctx, countryName, maxAge); err != nil && found {
+		log.Println(consts.LogCountryDataCacheHIT, countryName)
+		return cached.(map[string]interface{})
+	} else if err != nil {
+		log.Println(consts.LogCountryDataCacheMISS, countryName, "-", err)
+	}
+
+	// Falling to fetching from external API
 	url := consts.RestCountriesAPI + consts.QueryParamName + countryName
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error fetching country data:", err)
+		log.Println(consts.FailedToFetchCountryData, err)
 		return nil
 	}
 	defer func() {
@@ -211,11 +225,18 @@ func fetchCountryData(countryName string) map[string]interface{} {
 
 	var data []map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil || len(data) == 0 {
-		log.Println("Error decoding country data:", err)
+		log.Println(consts.LogErrorDecodeCurrency, err)
 		return nil
 	}
 
-	return data[0]
+	countryData := data[0]
+
+	// Saving to cache
+	if err := cache.SaveCountryInfoToCache(countryName, countryData); err != nil {
+		log.Println(consts.LogErrorCacheCountryData, err)
+	}
+
+	return countryData
 }
 
 // fetchWeatherData retrieves weather data (temperature and precipitation) from the Open-Meteo API.
@@ -233,34 +254,77 @@ func fetchCountryData(countryName string) map[string]interface{} {
 // If the request fails, the response cannot be decoded, or the expected data is not found,
 // the function logs an error and returns without modifying the features map.
 func fetchWeatherData(features map[string]interface{}, lat, lon float64, config *consts.RegistrationRequestBody) {
-	weatherURL := fmt.Sprintf(consts.WeatherURL, consts.OpenMeteoAPI, lat, lon)
-	resp, err := http.Get(weatherURL)
-	if err != nil {
-		log.Println("Error fetching weather data:", err)
+	const maxAge = 6 * time.Hour
+	ctx := context.Background()
+	cacheKey := cache.WeatherCacheKey(lat, lon)
+
+	// Try cache
+	if data := getCachedWeatherData(ctx, cacheKey, maxAge); data != nil {
+		log.Println(consts.WeatherCacheHit, cacheKey)
+		populateWeatherFromMap(features, data, config)
 		return
 	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Println(consts.ClosingResponseBody, err)
-		}
-	}()
+
+	// Fallback to API
+	log.Println(consts.WeatherCacheMiss, cacheKey)
+	data := fetchWeatherFromAPI(lat, lon)
+	if data == nil {
+		log.Println(consts.LogFailedFetchWeatherAPI)
+		return
+	}
+
+	// Cache it
+	if err := cache.SaveWeatherToCache(cacheKey, data); err != nil {
+		log.Println(consts.FailCacheWeatherData, err)
+	}
+
+	// Populate response
+	populateWeatherFromMap(features, data, config)
+}
+
+// getCachedWeatherData retrieves cached weather data from the cache.
+func getCachedWeatherData(ctx context.Context, key string, maxAge time.Duration) map[string]interface{} {
+	raw, found, err := cache.GetCachedWeather(ctx, key, maxAge)
+	if err != nil || !found {
+		return nil
+	}
+	if casted, ok := raw.(map[string]interface{}); ok {
+		return casted
+	}
+	return nil
+}
+
+// fetchWeatherFromAPI retrieves weather data from the Open-Meteo API.
+func fetchWeatherFromAPI(lat, lon float64) map[string]interface{} {
+	url := fmt.Sprintf(consts.WeatherURL, consts.OpenMeteoAPI, lat, lon)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Println(consts.LogHTTPReqFAil, err)
+		return nil
+	}
+	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	var weatherData map[string]interface{}
-	if err := json.Unmarshal(body, &weatherData); err != nil {
-		log.Println("Error decoding weather data:", err)
-		return
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Println(consts.LogFailedJSONDecode, err)
+		return nil
 	}
+	return parsed
+}
 
-	hourlyData, ok := weatherData["hourly"].(map[string]interface{})
+// populateWeatherFromMap populates weather-related features in the features map.
+func populateWeatherFromMap(features map[string]interface{}, data map[string]interface{}, config *consts.RegistrationRequestBody) {
+	hourly, ok := data["hourly"].(map[string]interface{})
 	if !ok {
+		log.Println(consts.LogHourlyDataMissingWeather)
 		return
 	}
 
-	if temps, ok := hourlyData["temperature_2m"].([]interface{}); ok && *config.Features.Temperature {
+	if temps, ok := hourly["temperature_2m"].([]interface{}); ok && *config.Features.Temperature {
 		features["temperature"] = calculateAverage(temps)
 	}
-	if precs, ok := hourlyData["precipitation"].([]interface{}); ok && *config.Features.Precipitation {
+	if precs, ok := hourly["precipitation"].([]interface{}); ok && *config.Features.Precipitation {
 		features["precipitation"] = calculateAverage(precs)
 	}
 }
@@ -279,44 +343,100 @@ func fetchWeatherData(features map[string]interface{}, lat, lon float64, config 
 // the function logs an error and returns without modifying the features map.
 // The function also logs the API URL and raw response for debugging purposes.
 func fetchCurrencyData(features map[string]interface{}, countryData map[string]interface{}, targetCurrencies []string) {
+	const maxAge = 6 * time.Hour
+	ctx := context.Background()
+
 	currencyCode := extractCurrencyCode(countryData)
 	if currencyCode == "" {
-		log.Println("No valid currency code found for the country")
+		log.Println(consts.LogNoCurrencyCodeForCountry)
 		return
 	}
 
-	url := fmt.Sprintf("%s/%s", consts.CurrencyAPI, currencyCode)
-	log.Printf("Currency API URL: %s", url) // Log the URL for debugging
+	// 1. Try cache first
+	if tryCurrencyFromCache(features, ctx, currencyCode, targetCurrencies, maxAge) {
+		return
+	}
 
+	// 2. Fallback to API
+	data := fetchCurrencyFromAPI(currencyCode)
+	if data == nil {
+		return
+	}
+
+	// 3. Extract + Save + Populate
+	if rates := extractRates(data); rates != nil {
+		err := cache.SaveCurrencyRatesToCache(currencyCode, rates)
+		if err != nil {
+			return
+		}
+		populateCurrencyFeatures(features, rates, targetCurrencies)
+	}
+}
+
+// tryCurrencyFromCache attempts to retrieve cached currency rates for the specified currency code.
+func tryCurrencyFromCache(features map[string]interface{}, ctx context.Context, currencyCode string, targetCurrencies []string, maxAge time.Duration) bool {
+	cached, found, err := cache.GetCachedCurrencyRates(ctx, currencyCode, maxAge)
+	if err != nil || !found {
+		log.Println(consts.LogCurrencyCacheMiss, currencyCode)
+		return false
+	}
+
+	typedRates, ok := cached.(map[string]float64)
+	if !ok {
+		log.Println(consts.LogInvalidCacheTypesCurrency)
+		return false
+	}
+
+	log.Println(consts.LogCurrencyCacheHIT, currencyCode)
+	populateCurrencyFeatures(features, typedRates, targetCurrencies)
+	return true
+}
+
+// fetchCurrencyFromAPI retrieves currency exchange rates from the Currency API for the specified currency code.
+func fetchCurrencyFromAPI(currencyCode string) map[string]interface{} {
+	url := fmt.Sprintf("%s/%s", consts.CurrencyAPI, currencyCode)
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error fetching currency data:", err)
-		return
+		log.Println(consts.LogErrorFetchCurrency, err)
+		return nil
 	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			log.Println(consts.ClosingResponseBody, err)
-		}
-	}()
+	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	log.Printf("Currency API Raw Response: %s", string(body)) // Log the raw response for debugging
+	var parsed map[string]interface{}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		log.Println(consts.LogErrorDecodeCurrency, err)
+		return nil
+	}
+	return parsed
+}
 
-	var currencyData map[string]interface{}
-	if err := json.Unmarshal(body, &currencyData); err != nil {
-		log.Println("Error decoding currency data:", err)
-		return
+// extractRates extracts exchange rates from the Currency API response.
+func extractRates(data map[string]interface{}) map[string]float64 {
+	rawRates, ok := data["rates"].(map[string]interface{})
+	if !ok {
+		log.Println(consts.LogMissingRatesCurrencyAPI)
+		return nil
 	}
 
-	if rates, ok := currencyData["rates"].(map[string]interface{}); ok {
-		filteredRates := make(map[string]interface{})
-		for _, currency := range targetCurrencies {
-			if rate, exists := rates[currency]; exists {
-				filteredRates[currency] = rate
-			}
+	rates := make(map[string]float64)
+	for k, v := range rawRates {
+		if floatVal, ok := v.(float64); ok {
+			rates[k] = floatVal
 		}
-		features["targetCurrencies"] = filteredRates
 	}
+	return rates
+}
+
+// populateCurrencyFeatures populates the "targetCurrencies" field in the features map.
+func populateCurrencyFeatures(features map[string]interface{}, rates map[string]float64, targetCurrencies []string) {
+	filtered := make(map[string]interface{})
+	for _, cur := range targetCurrencies {
+		if val, exists := rates[cur]; exists {
+			filtered[cur] = val
+		}
+	}
+	features["targetCurrencies"] = filtered
 }
 
 // extractCurrencyCode extracts the ISO 4217 currency code from country data.
