@@ -65,7 +65,7 @@ func GetCachedCountryInfo(ctx context.Context, country string, maxAge time.Durat
 
 // SaveCountryInfoToCache stores country information in the cache
 func SaveCountryInfoToCache(country string, data interface{}) error {
-	key := consts.CacheCountryInfoPrefix + country
+	key := CountryCacheKey(country)
 	return setCache(key, data)
 }
 
@@ -83,8 +83,8 @@ func GetCachedWeather(ctx context.Context, locationKey string, maxAge time.Durat
 }
 
 // SaveWeatherToCache stores weather information in the cache
-func SaveWeatherToCache(locationKey string, data interface{}) error {
-	key := consts.CacheWeatherPrefix + locationKey
+func SaveWeatherToCache(lat, lon float64, locationKey string, data interface{}) error {
+	key := WeatherCacheKey(lat, lon)
 	return setCache(key, data)
 }
 
@@ -103,6 +103,6 @@ func GetCachedCurrencyRates(ctx context.Context, baseCurrency string, maxAge tim
 
 // SaveCurrencyRatesToCache stores currency rates in the cache
 func SaveCurrencyRatesToCache(baseCurrency string, data interface{}) error {
-	key := consts.CacheCurrencyPrefix + baseCurrency
+	key := CurrencyCacheKey(baseCurrency)
 	return setCache(key, data)
 }
