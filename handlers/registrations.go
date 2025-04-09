@@ -119,7 +119,7 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	content.TimeChanged = timeNow
 
 	// Check if Firebase client is initialized
-	//if firebase.Client == nil {
+	//if firebase.client == nil {
 	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable.", http.StatusInternalServerError)
 	//	return
 	//}
@@ -145,10 +145,10 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 
 // addDashboardConfigurationToFirestore adds a new dashboard configuration to Firestore.
 func addDashboardConfigurationToFirestore(body consts.RegistrationRequestBody) (string, error) {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return "", fmt.Errorf(consts.FBNotInitialized)
 	}
-	docRef, _, err := firebase.Client.Collection(registrationsCollection).Add(firebase.Ctx, body)
+	docRef, _, err := firebase.AddToCollection(registrationsCollection, body)
 	if err != nil {
 		return "", err
 	}
@@ -391,7 +391,7 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 
 // deleteDashboardConfigFromDB deletes a dashboard configuration from Firestore based on the provided ID.
 func deleteDashboardConfigFromDB(id string) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
 	docRef := firebase.GetDocumentRef(registrationsCollection, id)
@@ -549,7 +549,7 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 
 // patchDashboardConfigInDB updates a dashboard configuration in Firestore based on the provided ID and input JSON.
 func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
 
