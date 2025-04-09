@@ -22,6 +22,7 @@ var DeleteDashboardConfigFromDBFunc = deleteDashboardConfigFromDB
 var GetAllDashboardConfigsFunc = getAllDashboardConfigsFromDB
 var PatchDashboardConfigInDBFunc = patchDashboardConfigInDB
 var ReplaceDashboardConfigInDBFunc = replaceDashboardConfigInDB
+var isFirebaseClientInitialized = firebase.IsFirebaseClientInitialized
 
 var (
 	addDashboardConfigurationFunc     = addDashboardConfiguration
@@ -191,12 +192,9 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 //   - error: An error object if an error occurred during retrieval, otherwise nil.
 func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error) {
 	// Retrieve specific message based on id (Firestore-generated hash)
-	res := firebase.Client.Collection(registrationsCollection).Doc(id)
-
-	// Retrieve reference to document
-	doc, err := res.Get(firebase.Ctx)
+	doc, err := firebase.GetDocument(registrationsCollection, id)
 	if err != nil {
-		log.Println("Error extracting body of returned document of message " + id)
+		log.Println("Error retrieving document from Firestore: " + err.Error())
 		return nil, err
 	}
 
@@ -229,7 +227,7 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 //	}
 //	fmt.Printf("Retrieved %d configurations.\n", len(configs))
 func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
-	iter := firebase.Client.Collection(registrationsCollection).Limit(100).OrderBy("TimeChanged", firestore.Asc).Documents(firebase.Ctx)
+	iter := firebase.GetLimitedSortedDocuments(registrationsCollection, "TimeChanged", 100)
 
 	var content []consts.RegistrationRequestBody
 	for doc, err := iter.Next(); !errors.Is(err, iterator.Done); doc, err = iter.Next() {
@@ -293,7 +291,6 @@ func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
 //	                  "targetCurrencies": ["EUR", "SEK"]
 //	               }
 //	}
-
 func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	log.Println(consts.LogPutProcessing)
 
@@ -329,12 +326,10 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 }
 
 func replaceDashboardConfigInDB(id string, content consts.RegistrationRequestBody) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
-
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
-	_, err := docRef.Set(firebase.Ctx, content)
+	err := firebase.SetDocument(registrationsCollection, id, content)
 	return err
 }
 
@@ -374,10 +369,10 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	}
 
 	// Check if Firebase client is initialized
-	//if firebase.Client == nil {
-	//	sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
-	//	return
-	//}
+	if !isFirebaseClientInitialized() {
+		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		return
+	}
 
 	err := DeleteDashboardConfigFromDBFunc(id)
 	if err != nil {
@@ -399,9 +394,9 @@ func deleteDashboardConfigFromDB(id string) error {
 	if firebase.Client == nil {
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+	docRef := firebase.GetDocumentRef(registrationsCollection, id)
 
-	doc, err := docRef.Get(firebase.Ctx)
+	doc, err := firebase.GetDocumentByRef(docRef)
 	if err != nil {
 		return err
 	}
@@ -409,7 +404,7 @@ func deleteDashboardConfigFromDB(id string) error {
 		return fmt.Errorf(consts.NotFound)
 	}
 
-	_, err = docRef.Delete(firebase.Ctx)
+	_, err = firebase.DeleteDocument(docRef)
 	return err
 }
 
@@ -558,9 +553,9 @@ func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) err
 		return fmt.Errorf(consts.FBNotInitialized)
 	}
 
-	docRef := firebase.Client.Collection(registrationsCollection).Doc(id)
+	docRef := firebase.GetDocumentRef(registrationsCollection, id)
 
-	doc, err := docRef.Get(firebase.Ctx)
+	doc, err := firebase.GetDocumentByRef(docRef)
 	if err != nil {
 		return fmt.Errorf("error checking document existence: %w", err)
 	}
@@ -588,6 +583,6 @@ func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) err
 		Value: time.Now().Format(time.RFC3339),
 	})
 
-	_, err = docRef.Update(firebase.Ctx, updates)
+	err = firebase.UpdateDocument(docRef, updates)
 	return err
 }

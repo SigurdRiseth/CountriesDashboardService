@@ -58,6 +58,11 @@ func GetCollectionIterator(collection string) *firestore.DocumentIterator {
 	return Client.Collection(collection).Documents(Ctx)
 }
 
+// GetLimitedSortedDocuments returns a DocumentIterator for the specified Firestore collection.
+func GetLimitedSortedDocuments(collection, sortBy string, limit int) *firestore.DocumentIterator {
+	return Client.Collection(collection).Limit(limit).OrderBy(sortBy, firestore.Asc).Documents(Ctx)
+}
+
 // GetDocumentRef returns a DocumentRef for the specified Firestore collection and document ID.
 func GetDocumentRef(collection, docID string) *firestore.DocumentRef {
 	return Client.Collection(collection).Doc(docID)
@@ -83,9 +88,25 @@ func DeleteDocument(docRef *firestore.DocumentRef) (*firestore.WriteResult, erro
 	return docRef.Delete(Ctx)
 }
 
-// FirebaseClientInitialized checks if the Firestore client is initialized.
+func SetDocument(collection, id string, content any) error {
+	_, err := Client.Collection(collection).Doc(id).Set(Ctx, content)
+	if err != nil {
+		log.Printf("Error setting document: %v", err)
+	}
+	return err
+}
+
+func UpdateDocument(docRef *firestore.DocumentRef, data []firestore.Update) error {
+	_, err := docRef.Update(Ctx, data)
+	if err != nil {
+		log.Printf("Error updating document: %v", err)
+	}
+	return err
+}
+
+// IsFirebaseClientInitialized checks if the Firestore client is initialized.
 // It returns true if the client is initialized, false otherwise.
-func FirebaseClientInitialized() bool {
+func IsFirebaseClientInitialized() bool {
 	if Client == nil {
 		log.Println("Firestore client is not initialized")
 		return false
