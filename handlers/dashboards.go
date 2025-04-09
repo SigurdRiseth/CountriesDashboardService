@@ -104,7 +104,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		log.Println(consts.ErrorEncodingResponse, err)
 	}
 
-	CheckWebhooks(config.IsoCode, Invoke, id)
+	defer CheckWebhooks(config.IsoCode, Invoke, id)
 	log.Println("Dashboard response sent successfully:", response)
 }
 

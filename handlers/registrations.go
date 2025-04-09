@@ -47,7 +47,6 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	log.Println("Registrations endpoint received " + request.Method + " request.")
 	switch request.Method {
 	case http.MethodPost:
-
 		addDashboardConfigurationFunc(writer, request)
 	case http.MethodGet:
 		viewDashboardConfigurationFunc(writer, request)
@@ -97,7 +96,6 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 //	  "lastChange": "2025-03-23T17:29:44+01:00"
 //	}
 //	```
-
 func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 
@@ -125,16 +123,17 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	//}
 
 	// Write the document to Firestore
-	idstr, err := AddDashboardConfigToDBFunc(content)
+	id, err := AddDashboardConfigToDBFunc(content)
 	if err != nil {
 		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Document added to registrationsCollection. Identifier of returned document: " + idstr)
+	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id)
+	defer CheckWebhooks(content.IsoCode, Register, id)
 
 	// Prepare and send JSON response
 	response := consts.RegistrationRequestResponse{
-		Id:         idstr,
+		Id:         id,
 		LastChange: timeNow,
 	}
 	writer.WriteHeader(http.StatusCreated) // 201 Created
@@ -321,6 +320,8 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 		return
 	}
 
+	defer CheckWebhooks(content.IsoCode, Change, id)
+
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogUpdateSuccess, id)
 }
@@ -374,6 +375,7 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
+	isoCode := getIsoCodeFromDocID(id)
 	err := DeleteDashboardConfigFromDBFunc(id)
 	if err != nil {
 		if err.Error() == consts.NotFound {
@@ -383,6 +385,8 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 		}
 		return
 	}
+
+	defer CheckWebhooks(isoCode, Delete, id)
 
 	// Return 204 No Content on successful deletion
 	writer.WriteHeader(http.StatusNoContent)
@@ -533,6 +537,8 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	isoCode := getIsoCodeFromDocID(id)
+
 	err := PatchDashboardConfigInDBFunc(id, inputJSON)
 	if err != nil {
 		if err.Error() == consts.NotFound {
@@ -543,8 +549,26 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
+	defer CheckWebhooks(isoCode, Change, id)
+
 	writer.WriteHeader(http.StatusNoContent)
 	log.Printf(consts.LogPatchSuccess, id)
+}
+
+var getIsoCodeFromDocID = func(id string) string {
+	doc, err := firebase.GetDocument(registrationsCollection, id)
+	if err != nil {
+		log.Println("Error retrieving document from Firestore: " + err.Error())
+		return ""
+	}
+
+	var content consts.RegistrationRequestBody
+	if err := doc.DataTo(&content); err != nil {
+		log.Println("Error converting document data to struct.")
+		return ""
+	}
+
+	return content.IsoCode
 }
 
 // patchDashboardConfigInDB updates a dashboard configuration in Firestore based on the provided ID and input JSON.

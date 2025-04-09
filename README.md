@@ -153,6 +153,8 @@ docker-compose down
 The application has been successfully deployed on an OpenStack instance (SkyHigh) and is accessible at the following address:
 - [http://10.212.174.14:8080](http://10.212.174.14:8080)
 
+Note: You have to be on the NTNU network (or VPN) to access this address.
+
 ## API Endpoints
 
 ### Registrations: Registering dashboard configuration
