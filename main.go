@@ -1,6 +1,7 @@
 package main
 
 import (
+	"CountriesDashboardService/cache"
 	"CountriesDashboardService/consts"
 	"CountriesDashboardService/firebase"
 	"CountriesDashboardService/handlers"
@@ -17,6 +18,8 @@ func main() {
 	// Initialize Firebase and Firestore
 	firebase.InitFirebase()
 	defer firebase.CloseFirebase()
+
+	cache.StartCacheAutoPurge()
 
 	// Start the server
 	router := http.NewServeMux()

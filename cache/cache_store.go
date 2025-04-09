@@ -83,8 +83,7 @@ func GetCachedWeather(ctx context.Context, locationKey string, maxAge time.Durat
 }
 
 // SaveWeatherToCache stores weather information in the cache
-func SaveWeatherToCache(lat, lon float64, locationKey string, data interface{}) error {
-	key := WeatherCacheKey(lat, lon)
+func SaveWeatherToCache(key string, data interface{}) error {
 	return setCache(key, data)
 }
 

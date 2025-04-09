@@ -60,9 +60,21 @@ const (
 	LogPutProcessing = "Processing PUT request for dashboard configuration "
 	LogGETForService = "Processing GET request for service status"
 
-	LogServerStarted  = "Server started on port: "
-	LogStartingServer = "Starting server..."
-	LogColon          = ":"
+	LogServerStarted             = "Server started on port: "
+	LogStartingServer            = "Starting server..."
+	LogColon                     = ":"
+	LogFailedFetchWeatherAPI     = " Failed to fetch weather from API"
+	FailCacheWeatherData         = "Failed to cache weather data: "
+	LogHTTPReqFAil               = "HTTP request failed:"
+	LogFailedJSONDecode          = "JSON decode failed:"
+	LogHourlyDataMissingWeather  = "Hourly data missing in weather map"
+	LogNoCurrencyCodeForCountry  = "No valid currency code found for the country"
+	LogCurrencyCacheMiss         = "Currency cache MISS:"
+	LogInvalidCacheTypesCurrency = "Invalid cache type for currency rates"
+	LogCurrencyCacheHIT          = "Currency cache HIT:"
+	LogErrorFetchCurrency        = "Error fetching currency data:"
+	LogErrorDecodeCurrency       = "Error decoding currency data:"
+	LogMissingRatesCurrencyAPI   = "Missing 'rates' in currency API response"
 )
 
 // Errors
@@ -99,6 +111,8 @@ const (
 	CacheWeatherPrefix     = "weather_"
 	CacheCurrencyPrefix    = "currency_"
 
-	CacheMissFor    = "cache miss for %s: %w"
-	CacheExpiredFor = "cache expired for %s: "
+	CacheMissFor     = "cache miss for %s: %w"
+	CacheExpiredFor  = "cache expired for %s: "
+	WeatherCacheHit  = "Weather cache HIT"
+	WeatherCacheMiss = "Weather cache MISS"
 )

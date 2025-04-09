@@ -256,26 +256,26 @@ func fetchCountryData(countryName string) map[string]interface{} {
 func fetchWeatherData(features map[string]interface{}, lat, lon float64, config *consts.RegistrationRequestBody) {
 	const maxAge = 6 * time.Hour
 	ctx := context.Background()
-	cacheKey := fmt.Sprintf("lat%.2f_lon%.2f", lat, lon)
+	cacheKey := cache.WeatherCacheKey(lat, lon)
 
 	// Try cache
 	if data := getCachedWeatherData(ctx, cacheKey, maxAge); data != nil {
-		log.Println("Weather cache HIT:", cacheKey)
+		log.Println(consts.WeatherCacheHit, cacheKey)
 		populateWeatherFromMap(features, data, config)
 		return
 	}
 
 	// Fallback to API
-	log.Println("Weather cache MISS:", cacheKey)
+	log.Println(consts.WeatherCacheMiss, cacheKey)
 	data := fetchWeatherFromAPI(lat, lon)
 	if data == nil {
-		log.Println("Failed to fetch weather from API")
+		log.Println(consts.LogFailedFetchWeatherAPI)
 		return
 	}
 
 	// Cache it
 	if err := cache.SaveWeatherToCache(cacheKey, data); err != nil {
-		log.Println("Failed to cache weather data:", err)
+		log.Println(consts.FailCacheWeatherData, err)
 	}
 
 	// Populate response
@@ -299,7 +299,7 @@ func fetchWeatherFromAPI(lat, lon float64) map[string]interface{} {
 	url := fmt.Sprintf(consts.WeatherURL, consts.OpenMeteoAPI, lat, lon)
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("HTTP request failed:", err)
+		log.Println(consts.LogHTTPReqFAil, err)
 		return nil
 	}
 	defer resp.Body.Close()
@@ -307,7 +307,7 @@ func fetchWeatherFromAPI(lat, lon float64) map[string]interface{} {
 	body, _ := io.ReadAll(resp.Body)
 	var parsed map[string]interface{}
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		log.Println("JSON decode failed:", err)
+		log.Println(consts.LogFailedJSONDecode, err)
 		return nil
 	}
 	return parsed
@@ -317,7 +317,7 @@ func fetchWeatherFromAPI(lat, lon float64) map[string]interface{} {
 func populateWeatherFromMap(features map[string]interface{}, data map[string]interface{}, config *consts.RegistrationRequestBody) {
 	hourly, ok := data["hourly"].(map[string]interface{})
 	if !ok {
-		log.Println("Hourly data missing in weather map")
+		log.Println(consts.LogHourlyDataMissingWeather)
 		return
 	}
 
@@ -348,7 +348,7 @@ func fetchCurrencyData(features map[string]interface{}, countryData map[string]i
 
 	currencyCode := extractCurrencyCode(countryData)
 	if currencyCode == "" {
-		log.Println("No valid currency code found for the country")
+		log.Println(consts.LogNoCurrencyCodeForCountry)
 		return
 	}
 
@@ -365,7 +365,10 @@ func fetchCurrencyData(features map[string]interface{}, countryData map[string]i
 
 	// 3. Extract + Save + Populate
 	if rates := extractRates(data); rates != nil {
-		cache.SaveCurrencyRatesToCache(currencyCode, rates)
+		err := cache.SaveCurrencyRatesToCache(currencyCode, rates)
+		if err != nil {
+			return
+		}
 		populateCurrencyFeatures(features, rates, targetCurrencies)
 	}
 }
@@ -374,17 +377,17 @@ func fetchCurrencyData(features map[string]interface{}, countryData map[string]i
 func tryCurrencyFromCache(features map[string]interface{}, ctx context.Context, currencyCode string, targetCurrencies []string, maxAge time.Duration) bool {
 	cached, found, err := cache.GetCachedCurrencyRates(ctx, currencyCode, maxAge)
 	if err != nil || !found {
-		log.Println("Currency cache MISS:", currencyCode)
+		log.Println(consts.LogCurrencyCacheMiss, currencyCode)
 		return false
 	}
 
 	typedRates, ok := cached.(map[string]float64)
 	if !ok {
-		log.Println("Invalid cache type for currency rates")
+		log.Println(consts.LogInvalidCacheTypesCurrency)
 		return false
 	}
 
-	log.Println("Currency cache HIT:", currencyCode)
+	log.Println(consts.LogCurrencyCacheHIT, currencyCode)
 	populateCurrencyFeatures(features, typedRates, targetCurrencies)
 	return true
 }
@@ -394,7 +397,7 @@ func fetchCurrencyFromAPI(currencyCode string) map[string]interface{} {
 	url := fmt.Sprintf("%s/%s", consts.CurrencyAPI, currencyCode)
 	resp, err := http.Get(url)
 	if err != nil {
-		log.Println("Error fetching currency data:", err)
+		log.Println(consts.LogErrorFetchCurrency, err)
 		return nil
 	}
 	defer resp.Body.Close()
@@ -402,7 +405,7 @@ func fetchCurrencyFromAPI(currencyCode string) map[string]interface{} {
 	body, _ := io.ReadAll(resp.Body)
 	var parsed map[string]interface{}
 	if err := json.Unmarshal(body, &parsed); err != nil {
-		log.Println("Error decoding currency data:", err)
+		log.Println(consts.LogErrorDecodeCurrency, err)
 		return nil
 	}
 	return parsed
@@ -412,7 +415,7 @@ func fetchCurrencyFromAPI(currencyCode string) map[string]interface{} {
 func extractRates(data map[string]interface{}) map[string]float64 {
 	rawRates, ok := data["rates"].(map[string]interface{})
 	if !ok {
-		log.Println("Missing 'rates' in currency API response")
+		log.Println(consts.LogMissingRatesCurrencyAPI)
 		return nil
 	}
 

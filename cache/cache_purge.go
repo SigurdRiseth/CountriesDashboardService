@@ -12,7 +12,7 @@ import (
 // purgeCacheCollection removes documents older than a specified TTL from a Firestore collection.
 func purgeCacheCollection(ctx context.Context, collection string, ttl time.Duration) error {
 	if firebase.Client == nil {
-		return fmt.Errorf("Firestore client not initialized")
+		return fmt.Errorf(consts.FTNotInitialized)
 	}
 
 	threshold := time.Now().Add(-ttl)
