@@ -22,8 +22,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("Could not initialize Firestore client: %v", err)
 	}
-	firebase.Client = client
-	firebase.Ctx = context.Background()
+	firebase.SetClient(client)
+	firebase.SetCtx(context.Background())
 
 	code := m.Run()
 	os.Exit(code)

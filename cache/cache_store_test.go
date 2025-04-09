@@ -19,8 +19,8 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	firebase.Client = client
-	firebase.Ctx = ctx
+	firebase.SetClient(client)
+	firebase.SetCtx(ctx)
 }
 
 // TestIsCacheExpired verifies the logic to determine if a cache timestamp is considered expired based on the TTL.
@@ -62,7 +62,7 @@ func TestGetCountryCacheExpired(t *testing.T) {
 
 	// Save with past timestamp manually
 	key := consts.CacheCountryInfoPrefix + country
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(key).Set(ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(key).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: time.Now().Add(-1 * time.Hour),
 		consts.FieldData:      expected,
 	})
@@ -100,7 +100,7 @@ func TestGetWeatherCacheExpired(t *testing.T) {
 	}
 
 	key := consts.CacheWeatherPrefix + locationKey
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(key).Set(ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(key).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: time.Now().Add(-2 * time.Hour),
 		consts.FieldData:      expected,
 	})
@@ -138,7 +138,7 @@ func TestGetCurrencyRatesCacheExpired(t *testing.T) {
 	}
 
 	key := consts.CacheCurrencyPrefix + baseCurrency
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(key).Set(ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(key).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: time.Now().Add(-3 * time.Hour),
 		consts.FieldData:      expected,
 	})

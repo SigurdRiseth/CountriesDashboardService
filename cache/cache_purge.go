@@ -13,12 +13,12 @@ import (
 // older than the given TTL (time-to-live) and deletes them.
 // This is a general-purpose internal function used by all specific purge functions.
 func purgeCacheCollection(ctx context.Context, collection string, ttl time.Duration) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FTNotInitialized)
 	}
 
 	threshold := time.Now().Add(-ttl)
-	query := firebase.Client.Collection(collection).Where(consts.TimeStamp, consts.LessThanAlligator, threshold)
+	query := firebase.GetClient().Collection(collection).Where(consts.TimeStamp, consts.LessThanAlligator, threshold)
 
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {

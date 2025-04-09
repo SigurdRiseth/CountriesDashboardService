@@ -20,14 +20,14 @@ func TestPurgeCountryCache(t *testing.T) {
 	now := time.Now()
 
 	// Fresh doc
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(freshID).Set(ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(freshID).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: now,
 		consts.FieldData:      "still valid",
 	})
 	assert.NoError(t, err)
 
 	// Expired doc
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: now.Add(-2 * time.Hour),
 		consts.FieldData:      "old data",
 	})
@@ -38,11 +38,11 @@ func TestPurgeCountryCache(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that fresh doc still exists
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(freshID).Get(ctx)
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(freshID).Get(ctx)
 	assert.NoError(t, err, "fresh doc should not be deleted")
 
 	// Check that expired doc was deleted
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(expiredID).Get(ctx)
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Get(ctx)
 	assert.Error(t, err, "expired doc should be deleted")
 }
 
@@ -56,14 +56,14 @@ func TestPurgeWeatherCache(t *testing.T) {
 	now := time.Now()
 
 	// Fresh doc
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(freshID).Set(ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(freshID).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: now,
 		consts.FieldData:      "still valid",
 	})
 	assert.NoError(t, err)
 
 	// Expired doc
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: now.Add(-2 * time.Hour),
 		consts.FieldData:      "old data",
 	})
@@ -74,11 +74,11 @@ func TestPurgeWeatherCache(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that fresh doc still exists
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(freshID).Get(ctx)
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(freshID).Get(ctx)
 	assert.NoError(t, err, "fresh doc should not be deleted")
 
 	// Check that expired doc was deleted
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(expiredID).Get(ctx)
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Get(ctx)
 	assert.Error(t, err, "expired doc should be deleted")
 }
 
@@ -92,14 +92,14 @@ func TestPurgeCurrencyCache(t *testing.T) {
 	now := time.Now()
 
 	// Fresh doc
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(freshID).Set(ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(freshID).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: now,
 		consts.FieldData:      "still valid",
 	})
 	assert.NoError(t, err)
 
 	// Expired doc
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
 		consts.FieldTimestamp: now.Add(-2 * time.Hour),
 		consts.FieldData:      "old data",
 	})
@@ -110,10 +110,10 @@ func TestPurgeCurrencyCache(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Check that fresh doc still exists
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(freshID).Get(ctx)
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(freshID).Get(ctx)
 	assert.NoError(t, err, "fresh doc should not be deleted")
 
 	// Check that expired doc was deleted
-	_, err = firebase.Client.Collection(consts.CacheCollection).Doc(expiredID).Get(ctx)
+	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Get(ctx)
 	assert.Error(t, err, "expired doc should be deleted")
 }

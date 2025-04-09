@@ -132,3 +132,19 @@ func DocumentExists(doc *firestore.DocumentSnapshot) bool {
 func NewClient(ctx context.Context, projectID string) (*firestore.Client, error) {
 	return firestore.NewClient(ctx, projectID)
 }
+
+func GetClient() *firestore.Client {
+	return client
+}
+
+func GetCtx() context.Context {
+	return ctx
+}
+
+func SetCtx(newCtx context.Context) {
+	ctx = newCtx
+}
+
+func SetClient(newClient *firestore.Client) {
+	client = newClient
+}

@@ -24,10 +24,10 @@ func isCacheExpired(ts time.Time, maxAge time.Duration) bool {
 // setCache stores a new entry in the Firestore cache collection with the current timestamp.
 // It overwrites any existing document with the same key.
 func setCache(key string, data interface{}) error {
-	if firebase.Client == nil {
+	if !firebase.IsFirebaseClientInitialized() {
 		return fmt.Errorf(consts.FTNotInitialized)
 	}
-	_, err := firebase.Client.Collection(consts.CacheCollection).Doc(key).Set(firebase.Ctx, map[string]interface{}{
+	_, err := firebase.GetClient().Collection(consts.CacheCollection).Doc(key).Set(firebase.GetCtx(), map[string]interface{}{
 		consts.FieldTimestamp: time.Now(),
 		consts.FieldData:      data,
 	})
@@ -37,7 +37,7 @@ func setCache(key string, data interface{}) error {
 // getCache retrieves a generic document from Firestore, extracting both data and its timestamp.
 // It returns a typed pointer to the data, the timestamp, and an error if applicable.
 func getCache[T any](ctx context.Context, collection, key string, maxAge time.Duration) (*T, time.Time, error) {
-	doc, err := firebase.Client.Collection(collection).Doc(key).Get(ctx)
+	doc, err := firebase.GetClient().Collection(collection).Doc(key).Get(ctx)
 	if err != nil {
 		return nil, time.Time{}, fmt.Errorf(consts.CacheMissFor, key, err)
 	}
