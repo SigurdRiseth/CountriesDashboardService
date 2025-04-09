@@ -87,4 +87,5 @@ const (
 const (
 	FBNotInitialized = "firebase client is not initialized"
 	FTNotInitialized = "firestore client is not initialized"
+	IsNotFound
 )
