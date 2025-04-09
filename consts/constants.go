@@ -59,7 +59,7 @@ const (
 	LogPutProcessing = "Processing PUT request for dashboard configuration "
 	LogGETForService = "Processing GET request for service status"
 
-	LogServerStarted  = "Server started on port"
+	LogServerStarted  = "Server started on port: "
 	LogStartingServer = "Starting server..."
 	LogColon          = ":"
 )

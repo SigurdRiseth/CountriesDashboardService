@@ -23,11 +23,12 @@ func main() {
 	port := consts.PortInUse
 
 	// Register the routes
-	router.HandleFunc(consts.Dash, handlers.Home)
+	//router.HandleFunc(consts.Dash, handlers.Home)
+	router.HandleFunc(consts.Dash, handlers.HomeHandler)
 	router.HandleFunc(consts.BaseRegistrationPath, handlers.HandleRegistrations)
 	router.HandleFunc(consts.BaseNotificationPath, handlers.HandleNotifications)
 	router.HandleFunc(consts.BaseDashboardPath, handlers.ViewDashboard)
-	router.HandleFunc(consts.BaseDashboardPath, handlers.HandleStatus)
+	router.HandleFunc(consts.BaseStatusPath, handlers.HandleStatus)
 
 	//Calling start time
 	utils.InitStartTime()
