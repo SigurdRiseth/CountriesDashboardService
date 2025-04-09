@@ -394,9 +394,211 @@ Deletes a specific configuration by ID.
 
 ### Dashboards: Retrieve populated dashboard
 
+This endpoint retrieves the populated dashboard data based on the registered configuration.
+
+#### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/dashboards/{id}`
+
+#### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+    "country": "Poland",
+    "features": {
+        "area": 312679,
+        "targetCurrencies": {
+            "SEK": 2.567791
+        }
+    },
+    "isoCode": "NO",
+    "lastRetrieval": "2025-04-09T15:55:51+02:00"
+}
+```
+---
+
 ### Notifications: Managing webhooks for event notifications
 
+This endpoint allows users to register and manage webhooks to receive notifications about changes and events related to dashboards and their configurations.
+
+---
+
+#### Register a Webhook
+
+This endpoint allows users to register a webhook URL to receive notifications about events related to a specific country.
+
+Supported event types:
+- `REGISTER`: Triggered when a new dashboard configuration is registered.
+- `CHANGE`: Triggered when an existing dashboard configuration is updated.
+- `DELETE`: Triggered when a dashboard configuration is deleted.
+- `INVOKE`: Triggered when a dashboard is accessed.
+
+##### Request
+
+- **Method**: `POST`
+- **Path**: `/dashboard/v1/notifications/`
+- **Content-Type**: `application/json`
+
+###### Example Request Body
+
+```json
+{
+  "country": "NO",
+  "url": "https://example.com/webhook",
+  "event": "DELETE"
+}
+```
+
+This registers a webhook for the country "NO" to receive notifications when a dashboard configuration for this country is deleted.
+
+##### Response
+
+- **Status Code**: `201 Created` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+  "id": "OIdksUDwveiwe"
+}
+```
+
+---
+
+#### Deletion of a Webhook
+
+This endpoint allows users to delete a registered webhook by its ID.
+
+##### Request
+
+- **Method**: `DELETE`
+- **Path**: `/dashboard/v1/notifications/{id}`
+
+##### Response
+
+- **Status Code**: `204 No Content` or appropriate error code
+- **Body**: empty
+
+---
+
+#### View a _Specific_ Webhook
+
+This endpoint retrieves a specific webhook by its ID.
+
+##### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/notifications/{id}`
+
+##### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+  "id": "OIdksUDwveiwe",
+  "country": "NO",
+  "url": "https://example.com/webhook",
+  "event": "DELETE"
+}
+```
+
+---
+
+#### View All Webhooks
+This endpoint retrieves all registered webhooks.
+
+##### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/notifications/`
+
+##### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+[
+  {
+    "id": "OIdksUDwveiwe",
+    "country": "NO",
+    "url": "https://example.com/webhook",
+    "event": "DELETE"
+  },
+  {
+    "id": "OIdksUDwdsaiwe",
+    "country": "SE",
+    "url": "https://example.com/webhook",
+    "event": "INVOKE"
+  }
+]
+```
+
+---
+
+#### Webhook Invocation
+
+When a webhook is triggered, the service sends a (POST) notification to the registered URL with the relevant event data.
+
+##### Request
+
+- **Method**: `POST`
+- **Path**: `<url specified in the corresponding webhook registration>`
+- **Content-Type**: `application/json`
+
+###### Example Request Body
+
+```json
+{
+  "id": "OIdksUDwveiwe",
+  "country": "NO",
+  "event": "INVOKE",
+  "timestamp": "2024-02-29T14:07:00+01:00"
+}
+```
+
+---
+
 ### Status: Monitoring service availability
+
+This endpoint provides a comprehensive overview of the service’s current health, dependencies, and operational metrics.
+
+#### Request
+
+- **Method**: `GET`
+- **Path**: `/dashboard/v1/status/`
+
+#### Response
+
+- **Status Code**: `200 OK` or appropriate error code
+- **Content-Type**: `application/json`
+
+###### Example Response Body
+
+```json
+{
+  "countries_api": 404,
+  "currency_api": 200,
+  "meteo_api": 200,
+  "notification_db": 200,
+  "uptime": 26,
+  "version": "v1",
+  "webhooks": 6
+}
+```
 
 ## Contributors
 
