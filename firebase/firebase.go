@@ -1,6 +1,7 @@
 package firebase
 
 import (
+	"CountriesDashboardService/consts"
 	"cloud.google.com/go/firestore"
 	"context"
 	"firebase.google.com/go"
@@ -87,7 +88,7 @@ func DeleteDocument(docRef *firestore.DocumentRef) (*firestore.WriteResult, erro
 // It returns true if the client is initialized, false otherwise.
 func FirebaseClientInitialized() bool {
 	if Client == nil {
-		log.Println("Firestore client is not initialized")
+		log.Println(consts.FTNotInitialized)
 		return false
 	}
 	return true
@@ -95,4 +96,10 @@ func FirebaseClientInitialized() bool {
 
 func DocumentExists(doc *firestore.DocumentSnapshot) bool {
 	return doc.Exists()
+}
+
+// NewClient initializes and returns a Firestore client using the given context and project ID.
+// This is used mainly in tests where we want to manually manage the client.
+func NewClient(ctx context.Context, projectID string) (*firestore.Client, error) {
+	return firestore.NewClient(ctx, projectID)
 }

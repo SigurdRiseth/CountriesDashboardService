@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"CountriesDashboardService/consts"
 	"context"
 	"log"
 	"time"
@@ -18,20 +19,20 @@ func StartCacheAutoPurge() {
 	go func() {
 		for {
 			<-ticker.C
-			log.Println("Auto-purge triggered")
+			log.Println(consts.AutoPurgedTriggered)
 
 			ctx := context.Background()
 			jobs := []purgeJob{
-				{Name: "CountryCache", Func: PurgeCountryCache, TTL: 6 * time.Hour},
-				{Name: "WeatherCache", Func: PurgeWeatherCache, TTL: 6 * time.Hour},
-				{Name: "CurrencyCache", Func: PurgeCurrencyCache, TTL: 6 * time.Hour},
+				{Name: consts.CountryCache, Func: PurgeCountryCache, TTL: 6 * time.Hour},
+				{Name: consts.WeatherCache, Func: PurgeWeatherCache, TTL: 6 * time.Hour},
+				{Name: consts.CurrencyCache, Func: PurgeCurrencyCache, TTL: 6 * time.Hour},
 			}
 
 			for _, job := range jobs {
 				if err := job.Func(ctx, job.TTL); err != nil {
-					log.Printf("Error purging %s: %v", job.Name, err)
+					log.Printf(consts.ErrorPurging, job.Name, err)
 				} else {
-					log.Printf("Successfully purged %s", job.Name)
+					log.Printf(consts.PurgedSuccessfully, job.Name)
 				}
 			}
 		}

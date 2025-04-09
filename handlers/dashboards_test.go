@@ -2,14 +2,32 @@ package handlers
 
 import (
 	"CountriesDashboardService/consts"
+	"CountriesDashboardService/firebase"
 	"CountriesDashboardService/tests/testutils"
 	"CountriesDashboardService/utils"
+	"context"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+	_ = os.Setenv("FIRESTORE_EMULATOR_HOST", "localhost:8081")
+
+	client, err := firebase.NewClient(context.Background(), "test-project")
+	if err != nil {
+		log.Fatalf("Could not initialize Firestore client: %v", err)
+	}
+	firebase.Client = client
+	firebase.Ctx = context.Background()
+
+	code := m.Run()
+	os.Exit(code)
+}
 
 func init() {
 	CheckWebhooks = testutils.MockCheckWebhooks
@@ -57,7 +75,7 @@ func TestViewDashboard_Success(t *testing.T) {
 	}
 
 	// Prepare request
-	req := httptest.NewRequest(http.MethodGet, "/dashboard/v1/dashboards?id=test-id", nil)
+	req := httptest.NewRequest(http.MethodGet, consts.MockDashboardEndpointWithTestID, nil)
 	rr := httptest.NewRecorder()
 
 	ViewDashboard(rr, req)

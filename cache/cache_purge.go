@@ -9,42 +9,47 @@ import (
 	"time"
 )
 
-// purgeCacheCollection removes documents older than a specified TTL from a Firestore collection.
+// purgeCacheCollection scans a Firestore collection for documents with a timestamp
+// older than the given TTL (time-to-live) and deletes them.
+// This is a general-purpose internal function used by all specific purge functions.
 func purgeCacheCollection(ctx context.Context, collection string, ttl time.Duration) error {
 	if firebase.Client == nil {
 		return fmt.Errorf(consts.FTNotInitialized)
 	}
 
 	threshold := time.Now().Add(-ttl)
-	query := firebase.Client.Collection(collection).Where("timestamp", "<", threshold)
+	query := firebase.Client.Collection(collection).Where(consts.TimeStamp, consts.LessThanAlligator, threshold)
 
 	docs, err := query.Documents(ctx).GetAll()
 	if err != nil {
-		return fmt.Errorf("failed to query expired documents: %w", err)
+		return fmt.Errorf(consts.FailedToQueryExpiredDocs, err)
 	}
 
 	for _, doc := range docs {
 		_, err := doc.Ref.Delete(ctx)
 		if err != nil {
-			log.Printf("Failed to delete doc %s: %v", doc.Ref.ID, err)
+			log.Printf(consts.FailedToDeleteDocs, doc.Ref.ID, err)
 		}
 	}
 
-	log.Printf("Purged %d expired documents from %s", len(docs), collection)
+	log.Printf(consts.PurgedExpiredDocs, len(docs), collection)
 	return nil
 }
 
-// PurgeCountryCache deletes outdated country cache entries.
+// PurgeCountryCache performs a cleanup of outdated country-related cache entries
+// by calling the shared purge logic with the appropriate TTL.
 func PurgeCountryCache(ctx context.Context, ttl time.Duration) error {
 	return purgeCacheCollection(ctx, consts.CacheCollection, ttl) // Assuming all cached in same collection
 }
 
-// PurgeWeatherCache deletes outdated weather cache entries.
+// PurgeWeatherCache removes weather-related cache entries that have expired.
+// It uses the general cache purging mechanism with a TTL value.
 func PurgeWeatherCache(ctx context.Context, ttl time.Duration) error {
 	return purgeCacheCollection(ctx, consts.CacheCollection, ttl)
 }
 
-// PurgeCurrencyCache deletes outdated currency cache entries.
+// PurgeCurrencyCache cleans up outdated cached currency rate documents.
+// It uses the same collection and TTL-based deletion logic.
 func PurgeCurrencyCache(ctx context.Context, ttl time.Duration) error {
 	return purgeCacheCollection(ctx, consts.CacheCollection, ttl)
 }

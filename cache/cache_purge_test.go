@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestPurgeCountryCache checks that expired country cache documents are deleted while fresh documents remain.
 func TestPurgeCountryCache(t *testing.T) {
 	ctx := context.Background()
 
@@ -45,6 +46,7 @@ func TestPurgeCountryCache(t *testing.T) {
 	assert.Error(t, err, "expired doc should be deleted")
 }
 
+// TestPurgeWeatherCache checks that expired weather cache documents are deleted while fresh documents remain.
 func TestPurgeWeatherCache(t *testing.T) {
 	ctx := context.Background()
 
@@ -80,6 +82,7 @@ func TestPurgeWeatherCache(t *testing.T) {
 	assert.Error(t, err, "expired doc should be deleted")
 }
 
+// TestPurgeCurrencyCache checks that expired currency cache documents are deleted while fresh documents remain.
 func TestPurgeCurrencyCache(t *testing.T) {
 	ctx := context.Background()
 

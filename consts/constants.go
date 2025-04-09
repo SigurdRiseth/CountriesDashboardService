@@ -107,7 +107,6 @@ const (
 const (
 	FBNotInitialized = "firebase client is not initialized"
 	FTNotInitialized = "firestore client is not initialized"
-	IsNotFound
 )
 
 // cache
@@ -118,9 +117,21 @@ const (
 	CacheCountryInfoPrefix = "country_"
 	CacheWeatherPrefix     = "weather_"
 	CacheCurrencyPrefix    = "currency_"
+	TimeStamp              = "timestamp"
+	LessThanAlligator      = "<"
 
-	CacheMissFor     = "cache miss for %s: %w"
-	CacheExpiredFor  = "cache expired for %s: "
-	WeatherCacheHit  = "Weather cache HIT"
-	WeatherCacheMiss = "Weather cache MISS"
+	CacheMissFor             = "cache miss for %s: %w"
+	CacheExpiredFor          = "cache expired for %s: "
+	WeatherCacheHit          = "Weather cache HIT"
+	WeatherCacheMiss         = "Weather cache MISS"
+	FailedToQueryExpiredDocs = "failed to query expired documents: %w"
+	FailedToDeleteDocs       = "Failed to delete doc %s: %v"
+	PurgedExpiredDocs        = "Purged %d expired documents from %s"
+	AutoPurgedTriggered      = "Auto-purge triggered"
+	CountryCache             = "CountryCache"
+	CurrencyCache            = "CurrencyCache"
+	WeatherCache             = "WeatherCache"
+	ErrorPurging             = "Error purging %s: %v"
+	PurgedSuccessfully       = "Successfully purged %s"
+	FailedDecodeCacheEntry   = "failed to decode cache entry for %s: %w"
 )

@@ -23,6 +23,7 @@ func init() {
 	firebase.Ctx = ctx
 }
 
+// TestIsCacheExpired verifies the logic to determine if a cache timestamp is considered expired based on the TTL.
 func TestIsCacheExpired(t *testing.T) {
 	now := time.Now()
 	maxAge := 10 * time.Minute
@@ -33,6 +34,7 @@ func TestIsCacheExpired(t *testing.T) {
 	assert.True(t, isCacheExpired(old, maxAge), "Old cache should be expired")
 }
 
+// TestSaveAndGetCountryCache ensures that saving and retrieving a country cache entry works correctly using the emulator.
 func TestSaveAndGetCountryCache(t *testing.T) {
 	ctx := context.Background()
 	country := "Testland"
@@ -50,6 +52,7 @@ func TestSaveAndGetCountryCache(t *testing.T) {
 	assert.Equal(t, expected, data)
 }
 
+// TestGetCountryCacheExpired confirms that expired country cache entries are correctly detected and not returned.
 func TestGetCountryCacheExpired(t *testing.T) {
 	ctx := context.Background()
 	country := "Mongoland"
@@ -70,6 +73,7 @@ func TestGetCountryCacheExpired(t *testing.T) {
 	assert.False(t, found)
 }
 
+// TestSaveAndGetWeatherCache checks if weather data is saved and retrieved correctly from the Firestore emulator cache.
 func TestSaveAndGetWeatherCache(t *testing.T) {
 	ctx := context.Background()
 	locationKey := "Oslo"
@@ -87,6 +91,7 @@ func TestSaveAndGetWeatherCache(t *testing.T) {
 	assert.Equal(t, expected, data)
 }
 
+// TestGetWeatherCacheExpired ensures expired weather data entries are purged correctly when TTL is exceeded.
 func TestGetWeatherCacheExpired(t *testing.T) {
 	ctx := context.Background()
 	locationKey := "Bergen"
@@ -106,6 +111,7 @@ func TestGetWeatherCacheExpired(t *testing.T) {
 	assert.False(t, found)
 }
 
+// TestSaveAndGetCurrencyRatesCache verifies storing and fetching currency rates to and from the cache using Firestore.
 func TestSaveAndGetCurrencyRatesCache(t *testing.T) {
 	ctx := context.Background()
 	baseCurrency := "NOK"
@@ -123,6 +129,7 @@ func TestSaveAndGetCurrencyRatesCache(t *testing.T) {
 	assert.Equal(t, expected, data)
 }
 
+// TestGetCurrencyRatesCacheExpired confirms that outdated currency cache entries are handled as expired.
 func TestGetCurrencyRatesCacheExpired(t *testing.T) {
 	ctx := context.Background()
 	baseCurrency := "SEK"
