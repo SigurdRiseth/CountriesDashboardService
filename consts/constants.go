@@ -194,7 +194,7 @@ const (
 	LessThanAlligator      = "<"
 	CountryKeyStamp        = "country_%s"
 	CurrencyKeyStamp       = "currency_%s"
-	WeatherKeyStamp        = "weather_%.2f:%.2f"
+	WeatherKeyStamp        = "weather_%.2f_%.2f"
 
 	CacheMissFor             = "cache miss for %s: %w"
 	CacheExpiredFor          = "cache expired for %s: "
