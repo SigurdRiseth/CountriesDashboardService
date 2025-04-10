@@ -12,8 +12,7 @@ import (
 	"time"
 )
 
-// Functions to be mocked for testing
-var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB
+var GetDashboardConfigFromDBFunc = getDashboardConfigFromDB // Functions to be mocked for testing
 var FetchCountryDataFunc = fetchCountryData
 var FetchWeatherDataFunc = fetchWeatherData
 var FetchCurrencyDataFunc = fetchCurrencyData
@@ -59,7 +58,7 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 
 	// Extract and validate ID
 	id := request.URL.Query().Get(consts.QueryParamID)
-	if id == "" {
+	if id == consts.Bunny {
 		http.Error(writer, consts.MissingIDParamInURL, http.StatusBadRequest)
 		return
 	}
@@ -74,12 +73,12 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 
 	// Initialize response
 	response := map[string]interface{}{
-		"country":       config.Country,
-		"isoCode":       config.IsoCode,
-		"features":      make(map[string]interface{}),
-		"lastRetrieval": time.Now().Format(time.RFC3339),
+		consts.CountryString:       config.Country,
+		consts.ISOCodeString:       config.IsoCode,
+		consts.FeaturesString:      make(map[string]interface{}),
+		consts.LastRetrievedString: time.Now().Format(time.RFC3339),
 	}
-	features := response["features"].(map[string]interface{})
+	features := response[consts.FeaturesString].(map[string]interface{})
 
 	// Fetch country data
 	countryData := FetchCountryDataFunc(config.Country)
@@ -105,9 +104,9 @@ func ViewDashboard(writer http.ResponseWriter, request *http.Request) {
 		http.Error(writer, consts.FailedEncodeJSON, http.StatusInternalServerError)
 		log.Println(consts.ErrorEncodingResponse, err)
 	}
-  
+
 	go CheckWebhooks(config.IsoCode, Invoke, id)
-	log.Println("Dashboard response sent successfully:", response)
+	log.Println(consts.LogDBResponseSent, response)
 }
 
 // populateCountryFeatures populates country-related features in the dashboard response.
@@ -134,16 +133,16 @@ func populateCountryFeatures(features map[string]interface{}, config *consts.Reg
 	featureList := []featureConfig{
 		{enabled: config.Features.Capital, extract: func(data map[string]interface{}) (interface{}, bool) {
 			return extractCapital(data)
-		}, key: "capital"},
+		}, key: consts.CapitalString},
 		{enabled: config.Features.Coordinates, extract: func(data map[string]interface{}) (interface{}, bool) {
 			return extractCoordinates(data)
-		}, key: "coordinates"},
+		}, key: consts.CoordinatesString},
 		{enabled: config.Features.Population, extract: func(data map[string]interface{}) (interface{}, bool) {
 			return extractPopulation(data)
-		}, key: "population"},
+		}, key: consts.PopulationString},
 		{enabled: config.Features.Area, extract: func(data map[string]interface{}) (interface{}, bool) {
 			return extractArea(data)
-		}, key: "area"},
+		}, key: consts.AreaString},
 	}
 	// Processing each feature
 	for _, f := range featureList {
@@ -178,8 +177,8 @@ func populateWeatherFeatures(features map[string]interface{}, config *consts.Reg
 	// Extract coordinates for weather data
 	var latitude, longitude float64
 	if coordinates, ok := extractCoordinates(countryData); ok {
-		latitude = coordinates["latitude"].(float64)
-		longitude = coordinates["longitude"].(float64)
+		latitude = coordinates[consts.LatitudeString].(float64)
+		longitude = coordinates[consts.LongitudeString].(float64)
 	}
 
 	// Fetch weather data if coordinates are available
@@ -302,7 +301,12 @@ func fetchWeatherFromAPI(lat, lon float64) map[string]interface{} {
 		log.Println(consts.LogHTTPReqFAil, err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println(consts.ClosingResponseBody, err)
+		}
+	}(resp.Body)
 
 	body, _ := io.ReadAll(resp.Body)
 	var parsed map[string]interface{}
@@ -315,17 +319,17 @@ func fetchWeatherFromAPI(lat, lon float64) map[string]interface{} {
 
 // populateWeatherFromMap populates weather-related features in the features map.
 func populateWeatherFromMap(features map[string]interface{}, data map[string]interface{}, config *consts.RegistrationRequestBody) {
-	hourly, ok := data["hourly"].(map[string]interface{})
+	hourly, ok := data[consts.HourlyString].(map[string]interface{})
 	if !ok {
 		log.Println(consts.LogHourlyDataMissingWeather)
 		return
 	}
 
-	if temps, ok := hourly["temperature_2m"].([]interface{}); ok && *config.Features.Temperature {
-		features["temperature"] = calculateAverage(temps)
+	if temps, ok := hourly[consts.TemperatureString2].([]interface{}); ok && *config.Features.Temperature {
+		features[consts.TemperatureString] = calculateAverage(temps)
 	}
-	if precs, ok := hourly["precipitation"].([]interface{}); ok && *config.Features.Precipitation {
-		features["precipitation"] = calculateAverage(precs)
+	if precs, ok := hourly[consts.PrecipitationString].([]interface{}); ok && *config.Features.Precipitation {
+		features[consts.PrecipitationString] = calculateAverage(precs)
 	}
 }
 
@@ -347,7 +351,7 @@ func fetchCurrencyData(features map[string]interface{}, countryData map[string]i
 	ctx := context.Background()
 
 	currencyCode := extractCurrencyCode(countryData)
-	if currencyCode == "" {
+	if currencyCode == consts.Bunny {
 		log.Println(consts.LogNoCurrencyCodeForCountry)
 		return
 	}
@@ -394,13 +398,18 @@ func tryCurrencyFromCache(features map[string]interface{}, ctx context.Context, 
 
 // fetchCurrencyFromAPI retrieves currency exchange rates from the Currency API for the specified currency code.
 func fetchCurrencyFromAPI(currencyCode string) map[string]interface{} {
-	url := fmt.Sprintf("%s/%s", consts.CurrencyAPI, currencyCode)
+	url := fmt.Sprintf(consts.SS, consts.CurrencyAPI, currencyCode)
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Println(consts.LogErrorFetchCurrency, err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Println(consts.ClosingResponseBody, err)
+		}
+	}(resp.Body)
 
 	body, _ := io.ReadAll(resp.Body)
 	var parsed map[string]interface{}
@@ -413,7 +422,7 @@ func fetchCurrencyFromAPI(currencyCode string) map[string]interface{} {
 
 // extractRates extracts exchange rates from the Currency API response.
 func extractRates(data map[string]interface{}) map[string]float64 {
-	rawRates, ok := data["rates"].(map[string]interface{})
+	rawRates, ok := data[consts.RatesString].(map[string]interface{})
 	if !ok {
 		log.Println(consts.LogMissingRatesCurrencyAPI)
 		return nil
@@ -436,7 +445,7 @@ func populateCurrencyFeatures(features map[string]interface{}, rates map[string]
 			filtered[cur] = val
 		}
 	}
-	features["targetCurrencies"] = filtered
+	features[consts.TargetCurrenciesString] = filtered
 }
 
 // extractCurrencyCode extracts the ISO 4217 currency code from country data.
@@ -448,7 +457,7 @@ func populateCurrencyFeatures(features map[string]interface{}, rates map[string]
 // Returns:
 //   - The ISO 4217 currency code as a string (e.g., "NOK"), or an empty string if no currency code is found.
 func extractCurrencyCode(countryData map[string]interface{}) string {
-	if currencies, ok := countryData["currencies"].(map[string]interface{}); ok {
+	if currencies, ok := countryData[consts.CurrenciesString].(map[string]interface{}); ok {
 		for code := range currencies {
 			return code // Return the first currency code found
 		}
@@ -458,7 +467,7 @@ func extractCurrencyCode(countryData map[string]interface{}) string {
 
 // extractCapital extracts the capital city from the country data.
 func extractCapital(countryData map[string]interface{}) (string, bool) {
-	if capitalList, ok := countryData["capital"].([]interface{}); ok && len(capitalList) > 0 {
+	if capitalList, ok := countryData[consts.CapitalString].([]interface{}); ok && len(capitalList) > 0 {
 		if capital, ok := capitalList[0].(string); ok {
 			return capital, true
 		}
@@ -468,10 +477,10 @@ func extractCapital(countryData map[string]interface{}) (string, bool) {
 
 // extractCoordinates extracts latitude and longitude from the country data.
 func extractCoordinates(countryData map[string]interface{}) (map[string]interface{}, bool) {
-	if latlng, ok := countryData["latlng"].([]interface{}); ok && len(latlng) == 2 {
+	if latlng, ok := countryData[consts.LatlngString].([]interface{}); ok && len(latlng) == 2 {
 		return map[string]interface{}{
-			"latitude":  latlng[0],
-			"longitude": latlng[1],
+			consts.LatitudeString:  latlng[0],
+			consts.LongitudeString: latlng[1],
 		}, true
 	}
 	return nil, false
@@ -479,7 +488,7 @@ func extractCoordinates(countryData map[string]interface{}) (map[string]interfac
 
 // extractPopulation extracts population from the country data.
 func extractPopulation(countryData map[string]interface{}) (float64, bool) {
-	if population, ok := countryData["population"].(float64); ok {
+	if population, ok := countryData[consts.PopulationString].(float64); ok {
 		return population, true
 	}
 	return 0, false
@@ -487,7 +496,7 @@ func extractPopulation(countryData map[string]interface{}) (float64, bool) {
 
 // extractArea extracts area from the country data.
 func extractArea(countryData map[string]interface{}) (float64, bool) {
-	if area, ok := countryData["area"].(float64); ok {
+	if area, ok := countryData[consts.AreaString].(float64); ok {
 		return area, true
 	}
 	return 0, false

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"CountriesDashboardService/consts"
 	"log"
 	"net/http"
 )
@@ -25,9 +26,9 @@ import (
 func HomeHandler(writer http.ResponseWriter, request *http.Request) {
 	switch request.Method {
 	case http.MethodGet:
-		http.ServeFile(writer, request, "./static/index.html")
+		http.ServeFile(writer, request, consts.StaticFilePath)
 	default:
-		log.Println("Unsupported request method " + request.Method)
-		http.Error(writer, "Unsupported request method "+request.Method, http.StatusMethodNotAllowed)
+		log.Println(consts.UnsopprtedReqMethod + request.Method)
+		http.Error(writer, consts.UnsopprtedReqMethod+request.Method, http.StatusMethodNotAllowed)
 	}
 }

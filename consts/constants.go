@@ -6,6 +6,11 @@ const (
 	DashboardCacheCollection = "dashboardCache"
 )
 
+// home page
+const (
+	StaticFilePath = "./static/index.html"
+)
+
 // External API URLs
 const (
 	RestCountriesAPI = "http://129.241.150.113:8080/v3.1"
@@ -48,6 +53,7 @@ const (
 	CurrencyParam     = "/currency/"
 	QueryNameUnknown  = "%s/name/unknown"
 	QueryMeteoLatLong = "?latitude=0&longitude=0&hourly=temperature_2m"
+	SS                = "%s/%s"
 )
 
 // Status
@@ -65,8 +71,25 @@ const (
 
 // structs
 const (
-	FeaturesString    = "features"
-	TimeChangedString = "TimeChanged"
+	FeaturesString         = "features"
+	TimeChangedString      = "TimeChanged"
+	CountryString          = "country"
+	ISOCodeString          = "isoCode"
+	LastRetrievedString    = "lastRetrieval"
+	CapitalString          = "capital"
+	CoordinatesString      = "coordinates"
+	PopulationString       = "population"
+	AreaString             = "area"
+	LatitudeString         = "latitude"
+	LongitudeString        = "longitude"
+	HourlyString           = "hourly"
+	TemperatureString2     = "temperature_2m"
+	TemperatureString      = "temperature"
+	PrecipitationString    = "precipitation"
+	RatesString            = "rates"
+	TargetCurrenciesString = "targetCurrencies"
+	CurrenciesString       = "currencies"
+	LatlngString           = "latlng"
 )
 
 // Logging message templates (optional, can be used in `log.Printf`)
@@ -118,7 +141,7 @@ const (
 	Error                       = "error "
 	MissingIDParamInURL         = "Missing configuration ID in URL path"
 	NotFound                    = "not found"
-	ClosingResponseBody         = "Error closing response body: "
+	ClosingResponseBody         = "error closing response body: "
 	FailedEncodeJSON            = "Failed to encode response as JSON: "
 	ErrorEncodingResponse       = "Error encoding response: "
 	MethodNotAllowed            = "Method not allowed"
@@ -147,8 +170,16 @@ const (
 
 // firebase
 const (
-	FBNotInitialized = "firebase client is not initialized"
-	FTNotInitialized = "firestore client is not initialized"
+	FBNotInitialized               = "firebase client is not initialized"
+	FTNotInitialized               = "firestore client is not initialized"
+	NoEnvFileFound                 = "No .env file found"
+	GOOGLE_APPLICATION_CREDENTIALS = "GOOGLE_APPLICATION_CREDENTIALS"
+	EnvironmentVarGACNotSet        = "environment variable GOOGLE_APPLICATION_CREDENTIALS is not set"
+	FailedToInitializeFB           = "failed to initialize Firebase app: %v"
+	FailedToInitializeFT           = "failed to initialize Firestore client: %v"
+	FailedToCloseFT                = "failed to close Firestore client: %v"
+	ErrorSettingDocument           = "error setting document: %v"
+	ErrorUpdatingDocument          = "error updating document: %v"
 )
 
 // cache
@@ -161,6 +192,9 @@ const (
 	CacheCurrencyPrefix    = "currency_"
 	TimeStamp              = "timestamp"
 	LessThanAlligator      = "<"
+	CountryKeyStamp        = "country_%s"
+	CurrencyKeyStamp       = "currency_%s"
+	WeatherKeyStamp        = "weather_%.2f:%.2f"
 
 	CacheMissFor             = "cache miss for %s: %w"
 	CacheExpiredFor          = "cache expired for %s: "

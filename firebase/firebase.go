@@ -1,6 +1,7 @@
 package firebase
 
 import (
+	"CountriesDashboardService/consts"
 	"cloud.google.com/go/firestore"
 	"context"
 	"firebase.google.com/go"
@@ -22,13 +23,13 @@ var (
 func InitFirebase() error {
 	// Load .env file
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Println(consts.NoEnvFileFound)
 	}
 
 	// Check if GOOGLE_APPLICATION_CREDENTIALS environment variable is set
-	credentialsFile := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
+	credentialsFile := os.Getenv(consts.GOOGLE_APPLICATION_CREDENTIALS)
 	if credentialsFile == "" {
-		return fmt.Errorf("environment variable GOOGLE_APPLICATION_CREDENTIALS is not set")
+		return fmt.Errorf(consts.EnvironmentVarGACNotSet)
 	}
 
 	// Initialize Firebase app
@@ -36,13 +37,13 @@ func InitFirebase() error {
 	opt := option.WithCredentialsFile(credentialsFile)
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		return fmt.Errorf("failed to initialize Firebase app: %v", err)
+		return fmt.Errorf(consts.FailedToInitializeFB, err)
 	}
 
 	// Initialize Firestore client
 	client, err = app.Firestore(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to initialize Firestore client: %v", err)
+		return fmt.Errorf(consts.FailedToInitializeFT, err)
 	}
 
 	return nil
@@ -53,7 +54,7 @@ func InitFirebase() error {
 func CloseFirebase() error {
 	if client != nil {
 		if err := client.Close(); err != nil {
-			return fmt.Errorf("failed to close Firestore client: %v", err)
+			return fmt.Errorf(consts.FailedToCloseFT, err)
 		}
 	}
 	return nil
@@ -98,7 +99,7 @@ func DeleteDocument(docRef *firestore.DocumentRef) (*firestore.WriteResult, erro
 func SetDocument(collection, id string, content any) error {
 	_, err := client.Collection(collection).Doc(id).Set(ctx, content)
 	if err != nil {
-		return fmt.Errorf("error setting document: %v", err)
+		return fmt.Errorf(consts.ErrorSettingDocument, err)
 	}
 	return nil
 }
@@ -107,7 +108,7 @@ func SetDocument(collection, id string, content any) error {
 func UpdateDocument(docRef *firestore.DocumentRef, data []firestore.Update) error {
 	_, err := docRef.Update(ctx, data)
 	if err != nil {
-		return fmt.Errorf("error updating document: %v", err)
+		return fmt.Errorf(consts.ErrorUpdatingDocument, err)
 	}
 	return nil
 }
