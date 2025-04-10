@@ -5,6 +5,7 @@ import (
 	"CountriesDashboardService/utils"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -12,28 +13,42 @@ import (
 	"testing"
 )
 
-func fakeAddDashboardConfiguration(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("addDashboardConfiguration called"))
+// Mock functions to replace actual implementations for testing
+
+func fakeAddDashboardConfiguration(w http.ResponseWriter, _ *http.Request) {
+	if _, err := w.Write([]byte("addDashboardConfiguration called")); err != nil {
+		fmt.Printf("Write error: %v\n", err)
+	}
 }
 
-func fakeViewDashboardConfiguration(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("viewDashboardConfiguration called"))
+func fakeViewDashboardConfiguration(w http.ResponseWriter, _ *http.Request) {
+	if _, err := w.Write([]byte("viewDashboardConfiguration called")); err != nil {
+		fmt.Printf("Write error: %v\n", err)
+	}
 }
 
-func fakeHandleHeadRequest(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("handleHeadRequest called"))
+func fakeHandleHeadRequest(w http.ResponseWriter, _ *http.Request) {
+	if _, err := w.Write([]byte("handleHeadRequest called")); err != nil {
+		fmt.Printf("Write error: %v\n", err)
+	}
 }
 
-func fakeReplaceDashboardConfiguration(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("replaceDashboardConfiguration called"))
+func fakeReplaceDashboardConfiguration(w http.ResponseWriter, _ *http.Request) {
+	if _, err := w.Write([]byte("replaceDashboardConfiguration called")); err != nil {
+		fmt.Printf("Write error: %v\n", err)
+	}
 }
 
-func fakeDelete(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("deleteDashboardConfiguration called"))
+func fakeDelete(w http.ResponseWriter, _ *http.Request) {
+	if _, err := w.Write([]byte("deleteDashboardConfiguration called")); err != nil {
+		fmt.Printf("Write error: %v\n", err)
+	}
 }
 
-func fakeHandlePatchRequest(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("handlePatchRequest called"))
+func fakeHandlePatchRequest(w http.ResponseWriter, _ *http.Request) {
+	if _, err := w.Write([]byte("handlePatchRequest called")); err != nil {
+		fmt.Printf("Write error: %v\n", err)
+	}
 }
 
 func fakeSendErrorResponse(w http.ResponseWriter, message string, statusCode int) {
@@ -114,7 +129,12 @@ func Test_addDashboardConfiguration(t *testing.T) {
 	addDashboardConfiguration(rec, req)
 
 	resp := rec.Result()
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusCreated {
 		t.Fatalf("Expected status 201 Created, got %d", resp.StatusCode)
@@ -235,7 +255,12 @@ func Test_handleHeadRequest(t *testing.T) {
 	handleHeadRequest(rec, req)
 
 	resp := rec.Result()
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("Expected status 200 OK, got %d", resp.StatusCode)
@@ -279,7 +304,12 @@ func Test_handlePatchRequest(t *testing.T) {
 	handlePatchRequest(rec, req)
 
 	resp := rec.Result()
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusNoContent {
 		t.Errorf("Expected status 204 No Content, got %d", resp.StatusCode)
@@ -331,7 +361,12 @@ func Test_replaceDashboardConfiguration(t *testing.T) {
 
 	// Assert result
 	resp := rec.Result()
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusNoContent {
 		t.Errorf("Expected status 204 No Content, got %d", resp.StatusCode)
@@ -354,7 +389,12 @@ func Test_replaceDashboardConfiguration_DBError(t *testing.T) {
 	replaceDashboardConfiguration(rec, req)
 
 	resp := rec.Result()
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			fmt.Printf("Error closing response body: %v\n", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusInternalServerError {
 		t.Errorf("Expected 500 Internal Server Error, got %d", resp.StatusCode)
@@ -426,7 +466,12 @@ func Test_viewDashboardConfiguration(t *testing.T) {
 		viewDashboardConfiguration(rec, req)
 
 		resp := rec.Result()
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				fmt.Printf("Error closing response body: %v\n", err)
+			}
+		}(resp.Body)
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expected status 200 OK, got %d", resp.StatusCode)
@@ -464,7 +509,12 @@ func Test_viewDashboardConfiguration(t *testing.T) {
 		viewDashboardConfiguration(rec, req)
 
 		resp := rec.Result()
-		defer resp.Body.Close()
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+				fmt.Printf("Error closing response body: %v\n", err)
+			}
+		}(resp.Body)
 
 		if resp.StatusCode != http.StatusOK {
 			t.Errorf("Expected 200 OK, got %d", resp.StatusCode)

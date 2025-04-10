@@ -5,6 +5,7 @@ import (
 	"CountriesDashboardService/firebase"
 	"CountriesDashboardService/utils"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -69,15 +70,15 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 
 	// Initialize the status response
 	status := map[string]interface{}{
-		"version": "v1",
-		"uptime":  int64(time.Since(utils.StartTime).Seconds()),
+		consts.StatusVersion: consts.V1,
+		consts.StatusUptime:  int64(time.Since(utils.StartTime).Seconds()),
 	}
 
 	// Check availability of dependent services
-	status["countries_api"] = checkServiceAvailability(fmt.Sprintf(consts.QueryNameUnknown, consts.RestCountriesAPI))
-	status["meteo_api"] = checkServiceAvailability(consts.OpenMeteoAPI + consts.QueryMeteoLatLong)
-	status["currency_api"] = checkServiceAvailability(fmt.Sprintf("%s/NOK", consts.CurrencyAPI))
-	status["notification_db"] = CheckNotificationDBFunc()
+	status[consts.StatusCountriesAPI] = checkServiceAvailability(fmt.Sprintf(consts.QueryNameUnknown, consts.RestCountriesAPI))
+	status[consts.StatusMeteoAPI] = checkServiceAvailability(consts.OpenMeteoAPI + consts.QueryMeteoLatLong)
+	status[consts.StatusCurrencyAPI] = checkServiceAvailability(fmt.Sprintf(consts.StatusNOK, consts.CurrencyAPI))
+	status[consts.StatusNotificationDB] = CheckNotificationDBFunc()
 
 	// Count registered webhooks
 	webhookCount, err := CountWebhooksFunc()
@@ -85,7 +86,7 @@ func handleGetStatus(writer http.ResponseWriter, request *http.Request) {
 		sendErrorResponse(writer, consts.FailedCountRegisteredWH+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	status["webhooks"] = webhookCount
+	status[consts.StatusWebhooks] = webhookCount
 
 	// Send the response
 	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
@@ -114,7 +115,7 @@ func checkServiceAvailability(url string) int {
 	isCurrencyAPI := false
 	urlContainsCurrency := consts.CurrencyParam
 
-	if len(url) > 0 && urlContainsCurrency != "" && utils.Contains(url, urlContainsCurrency) {
+	if len(url) > 0 && urlContainsCurrency != consts.Bunny && utils.Contains(url, urlContainsCurrency) {
 		isCurrencyAPI = true
 	}
 
@@ -157,7 +158,7 @@ func checkNotificationDB() int {
 	// Perform a simple query to check database availability
 	_, err := firebase.GetCollectionIterator(notificationsCollection).Next()
 	if err != nil {
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			// No documents found, but the database is accessible
 			return http.StatusOK // 200 if the query succeeds (even if no documents exist)
 		}
@@ -201,7 +202,7 @@ func countWebhooks() (int64, error) {
 func sendErrorResponseStatus(writer http.ResponseWriter, message string, statusCode int) {
 	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 	writer.WriteHeader(statusCode)
-	response := map[string]string{"error": message}
+	response := map[string]string{consts.Error: message}
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
 		log.Printf(consts.EncodingErrorResponse, err)
 	}

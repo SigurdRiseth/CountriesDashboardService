@@ -44,7 +44,7 @@ var (
 // - PATCH: Partially updates the existing dashboard configuration.
 // For unsupported methods, it responds with a 405 Method Not Allowed status.
 func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
-	log.Println("Registrations endpoint received " + request.Method + " request.")
+	log.Println(consts.LogRegistrationsEndpointRecieved + request.Method + consts.LogRequest)
 	switch request.Method {
 	case http.MethodPost:
 		addDashboardConfigurationFunc(writer, request)
@@ -59,7 +59,7 @@ func HandleRegistrations(writer http.ResponseWriter, request *http.Request) {
 	case http.MethodPatch:
 		handlePatchRequestFunc(writer, request)
 	default:
-		sendErrorResponseFunc(writer, "Unsupported request method: "+request.Method, http.StatusMethodNotAllowed)
+		sendErrorResponseFunc(writer, consts.UnsopprtedReqMethod+request.Method, http.StatusMethodNotAllowed)
 	}
 }
 
@@ -107,8 +107,8 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	}
 
 	// Validate required fields in content (optional step)
-	if content.Country == "" || content.IsoCode == "" {
-		sendErrorResponse(writer, "Missing required fields: Name or Description", http.StatusBadRequest)
+	if content.Country == consts.Bunny || content.IsoCode == consts.Bunny {
+		sendErrorResponse(writer, consts.MissingFields, http.StatusBadRequest)
 		return
 	}
 
@@ -125,10 +125,10 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	// Write the document to Firestore
 	id, err := AddDashboardConfigToDBFunc(content)
 	if err != nil {
-		sendErrorResponse(writer, "Error when adding document to Firestore: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.ErrorAddingDocToFT+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Println("Document added to registrationsCollection. Identifier of returned document: " + id)
+	log.Println(consts.LogDocAddedToRC + id)
 	go CheckWebhooks(content.IsoCode, Register, id)
 
 	// Prepare and send JSON response
@@ -138,18 +138,18 @@ func addDashboardConfiguration(writer http.ResponseWriter, request *http.Request
 	}
 	writer.WriteHeader(http.StatusCreated) // 201 Created
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		log.Printf("Error encoding JSON response: %v", err)
+		log.Printf(consts.ErrorEncodingJSONResp, err)
 	}
 }
 
 // addDashboardConfigurationToFirestore adds a new dashboard configuration to Firestore.
 func addDashboardConfigurationToFirestore(body consts.RegistrationRequestBody) (string, error) {
 	if !firebase.IsFirebaseClientInitialized() {
-		return "", fmt.Errorf(consts.FBNotInitialized)
+		return consts.Bunny, fmt.Errorf(consts.FBNotInitialized)
 	}
 	docRef, _, err := firebase.AddToCollection(registrationsCollection, body)
 	if err != nil {
-		return "", err
+		return consts.Bunny, err
 	}
 	return docRef.ID, nil
 }
@@ -169,14 +169,14 @@ func viewDashboardConfiguration(writer http.ResponseWriter, request *http.Reques
 	}
 
 	if err != nil {
-		sendErrorResponse(writer, "Error retrieving dashboard configurations: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.LogErrorRetrievingDBConfig+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Encode and send the response
 	writer.Header().Set(consts.ContentTypeHeader, consts.ApplicationJSON)
 	if err := json.NewEncoder(writer).Encode(response); err != nil {
-		sendErrorResponse(writer, "Failed to encode response", http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.ErrorEncodingResponse, http.StatusInternalServerError)
 	}
 }
 
@@ -193,13 +193,13 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 	// Retrieve specific message based on id (Firestore-generated hash)
 	doc, err := firebase.GetDocument(registrationsCollection, id)
 	if err != nil {
-		log.Println("Error retrieving document from Firestore: " + err.Error())
+		log.Println(consts.LogErrorRetrievingDCFT + err.Error())
 		return nil, err
 	}
 
 	var content consts.RegistrationRequestBody
 	if err := doc.DataTo(&content); err != nil {
-		log.Println("Error converting document data to struct.")
+		log.Println(consts.LogErrorConvertingDCtoDataStruct)
 		return nil, err
 	}
 
@@ -226,18 +226,18 @@ func getDashboardConfigFromDB(id string) (*consts.RegistrationRequestBody, error
 //	}
 //	fmt.Printf("Retrieved %d configurations.\n", len(configs))
 func getAllDashboardConfigsFromDB() ([]consts.RegistrationRequestBody, error) {
-	iter := firebase.GetLimitedSortedDocuments(registrationsCollection, "TimeChanged", 100)
+	iter := firebase.GetLimitedSortedDocuments(registrationsCollection, consts.TimeChangedString, 100)
 
 	var content []consts.RegistrationRequestBody
 	for doc, err := iter.Next(); !errors.Is(err, iterator.Done); doc, err = iter.Next() {
 		if err != nil {
-			log.Printf("Error iterating Firestore documents: %v", err)
+			log.Printf(consts.LogErrorIteratingFTDocs, err)
 			return nil, err
 		}
 
 		var item consts.RegistrationRequestBody
 		if err := doc.DataTo(&item); err != nil {
-			log.Printf("Error converting document %s data to struct: %v", doc.Ref.ID, err)
+			log.Printf(consts.LogErrorConvertingDCtoDataStruct2, doc.Ref.ID, err)
 			return nil, err
 		}
 
@@ -294,7 +294,7 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 	log.Println(consts.LogPutProcessing)
 
 	id := request.URL.Query().Get(consts.QueryParamID)
-	if id == "" {
+	if id == consts.Bunny {
 		sendErrorResponse(writer, consts.MissingIDParamInURL, http.StatusBadRequest)
 		return
 	}
@@ -306,7 +306,7 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 	}
 
 	if content.Country == "" || content.IsoCode == "" {
-		sendErrorResponse(writer, "Missing required fields: country or isoCode", http.StatusBadRequest)
+		sendErrorResponse(writer, consts.MissingFieldCountryIso, http.StatusBadRequest)
 		return
 	}
 
@@ -316,7 +316,7 @@ func replaceDashboardConfiguration(writer http.ResponseWriter, request *http.Req
 	// ReplaceDashboardConfigInDBFunc handles the Firestore logic
 	err := ReplaceDashboardConfigInDBFunc(id, content)
 	if err != nil {
-		sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.LogErrorUpdatingConfig+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -371,7 +371,7 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 
 	// Check if Firebase client is initialized
 	if !isFirebaseClientInitialized() {
-		sendErrorResponse(writer, "Internal server error: Database client is unavailable", http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.DBClientUnavailable, http.StatusInternalServerError)
 		return
 	}
 
@@ -379,9 +379,9 @@ func deleteDashboardConfiguration(writer http.ResponseWriter, request *http.Requ
 	err := DeleteDashboardConfigFromDBFunc(id)
 	if err != nil {
 		if err.Error() == consts.NotFound {
-			sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+			sendErrorResponse(writer, consts.ConfigNotFound, http.StatusNotFound)
 		} else {
-			sendErrorResponse(writer, "Error deleting configuration: "+err.Error(), http.StatusInternalServerError)
+			sendErrorResponse(writer, consts.ErrorDeletingConfig+err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -444,7 +444,7 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 		// Fetch a specific dashboard config by ID
 		doc, err2 := GetDashboardConfigFromDBFunc(id)
 		if err2 != nil {
-			sendErrorResponse(writer, "Error fetching dashboard config: "+err2.Error(), http.StatusInternalServerError)
+			sendErrorResponse(writer, consts.FailedRetrieveDBConfig+err2.Error(), http.StatusInternalServerError)
 			return
 		}
 		jsonData, err = json.Marshal(doc) // Marshal the single document to JSON
@@ -452,14 +452,14 @@ func handleHeadRequest(writer http.ResponseWriter, request *http.Request) {
 		// Fetch and marshal all dashboard configs if no ID is provided
 		docs, err2 := GetAllDashboardConfigsFunc()
 		if err2 != nil {
-			sendErrorResponse(writer, "Error fetching all dashboard configs: "+err2.Error(), http.StatusInternalServerError)
+			sendErrorResponse(writer, consts.FailedCatchAllDBConfig+err2.Error(), http.StatusInternalServerError)
 			return
 		}
 		jsonData, err = json.Marshal(docs) // Marshal the slice of documents to JSON
 	}
 
 	if err != nil {
-		sendErrorResponse(writer, "Error marshaling data to JSON: "+err.Error(), http.StatusInternalServerError)
+		sendErrorResponse(writer, consts.ErrorMarshalDataToJSON+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -542,9 +542,9 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 	err := PatchDashboardConfigInDBFunc(id, inputJSON)
 	if err != nil {
 		if err.Error() == consts.NotFound {
-			sendErrorResponse(writer, "Configuration not found", http.StatusNotFound)
+			sendErrorResponse(writer, consts.ConfigNotFound, http.StatusNotFound)
 		} else {
-			sendErrorResponse(writer, "Error updating configuration: "+err.Error(), http.StatusInternalServerError)
+			sendErrorResponse(writer, consts.LogErrorUpdatingConfig+err.Error(), http.StatusInternalServerError)
 		}
 		return
 	}
@@ -558,14 +558,14 @@ func handlePatchRequest(writer http.ResponseWriter, request *http.Request) {
 var getIsoCodeFromDocID = func(id string) string {
 	doc, err := firebase.GetDocument(registrationsCollection, id)
 	if err != nil {
-		log.Println("Error retrieving document from Firestore: " + err.Error())
+		log.Println(consts.LogErrorRetrievingDCFT + err.Error())
 		return ""
 	}
 
 	var content consts.RegistrationRequestBody
 	if err := doc.DataTo(&content); err != nil {
-		log.Println("Error converting document data to struct.")
-		return ""
+		log.Println(consts.LogErrorConvertingDCtoDataStruct)
+		return consts.Bunny
 	}
 
 	return content.IsoCode
@@ -581,7 +581,7 @@ func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) err
 
 	doc, err := firebase.GetDocumentByRef(docRef)
 	if err != nil {
-		return fmt.Errorf("error checking document existence: %w", err)
+		return fmt.Errorf(consts.ErrorCheckingDCExistence, err)
 	}
 	if !doc.Exists() {
 		return fmt.Errorf(consts.NotFound)
@@ -596,14 +596,14 @@ func patchDashboardConfigInDB(id string, inputJSON consts.UserUpdateRequest) err
 		value := val.Field(i).Interface()
 		if value != nil {
 			updates = append(updates, firestore.Update{
-				Path:  "Features." + field.Name,
+				Path:  consts.FeaturesString + field.Name,
 				Value: value,
 			})
 		}
 	}
 
 	updates = append(updates, firestore.Update{
-		Path:  "TimeChanged",
+		Path:  consts.TimeChangedString,
 		Value: time.Now().Format(time.RFC3339),
 	})
 

@@ -41,12 +41,32 @@ const (
 
 // Query parameter keys
 const (
+	Bunny             = ""
 	Dash              = "/"
 	QueryParamID      = "id"
 	QueryParamName    = "/name/"
 	CurrencyParam     = "/currency/"
 	QueryNameUnknown  = "%s/name/unknown"
 	QueryMeteoLatLong = "?latitude=0&longitude=0&hourly=temperature_2m"
+)
+
+// Status
+const (
+	StatusCountriesAPI   = "countries_api"
+	StatusMeteoAPI       = "meteo_api"
+	StatusCurrencyAPI    = "currency_api"
+	StatusNotificationDB = "notification_db"
+	StatusWebhooks       = "webhooks"
+	StatusVersion        = "version"
+	StatusUptime         = "uptime"
+	StatusNOK            = "%s/NOK"
+	V1                   = "v1"
+)
+
+// structs
+const (
+	FeaturesString    = "features"
+	TimeChangedString = "TimeChanged"
 )
 
 // Logging message templates (optional, can be used in `log.Printf`)
@@ -78,13 +98,24 @@ const (
 	LogCountryDataCacheHIT        = "Country data cache HIT for: "
 	LogCountryDataCacheMISS       = "Country data cache MISS for: "
 	LogErrorRetrievingConfig      = "Error retrieving configuration:"
+	LogErrorRetrievingDBConfig    = "Error retrieving dashboard configurations: "
 	LogErrorRetrievingCountryData = "Error retrieving country data"
+	LogErrorRetrievingDCFT        = "Error retrieving document from Firestore: "
 	LogDBResponseSent             = "Dashboard response sent successfully:"
 	LogErrorCacheCountryData      = "Error caching country data:"
+
+	LogRegistrationsEndpointRecieved  = "Registrastions endpoint received: "
+	LogRequest                        = " request"
+	LogDocAddedToRC                   = "Document added to registrationsCollection. Identifier of returned document: "
+	LogErrorConvertingDCtoDataStruct  = "Error converting document data to struct."
+	LogErrorConvertingDCtoDataStruct2 = "Error converting document %s data to struct: %v"
+	LogErrorIteratingFTDocs           = "Error iterating Firestore documents: %v"
+	LogErrorUpdatingConfig            = "Error updating configuration: "
 )
 
 // Errors
 const (
+	Error                       = "error "
 	MissingIDParamInURL         = "Missing configuration ID in URL path"
 	NotFound                    = "not found"
 	ClosingResponseBody         = "Error closing response body: "
@@ -96,7 +127,18 @@ const (
 	CheckingServiceAvailability = "Error checking service availability for %s: %v"
 	FailedCountRegisteredWH     = "Failed to count registered webhooks: "
 	FailedRetrieveDBConfig      = "Failed to retrieve dashboard configuration from database"
+	FailedCatchAllDBConfig      = "Error fetching all dashboard configurations: "
 	FailedToFetchCountryData    = "Failed to fetch country data"
+	UnsopprtedReqMethod         = "Unsupported request method: "
+	MissingFields               = "Missing required fields: Name or Description"
+	ErrorAddingDocToFT          = "Error when adding document to Firestore: "
+	ErrorEncodingJSONResp       = "Error encoding JSON response: %v"
+	MissingFieldCountryIso      = "Missing required fields: country or isoCode"
+	DBClientUnavailable         = "Database client unavailable"
+	ConfigNotFound              = "Configuration not found"
+	ErrorDeletingConfig         = "Error deleting configuration: "
+	ErrorMarshalDataToJSON      = "Error marshalling data to JSON: "
+	ErrorCheckingDCExistence    = "error checking document existence: %w"
 )
 
 const (

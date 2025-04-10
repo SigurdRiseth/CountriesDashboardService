@@ -11,16 +11,21 @@ import (
 	"time"
 )
 
-// mockCountWebhooks simulates returning 5 registered webhooks
+// mockCountWebhooks simulates the count of registered webhooks for testing.
+// Always returns 5 webhooks and no error.
 func mockCountWebhooks() (int64, error) {
 	return 5, nil
 }
 
-// mockNotificationDB simulates Firestore DB is accessible
+// mockNotificationDB simulates checking Firestore DB accessibility.
+// Always returns HTTP 200 OK status.
 func mockNotificationDB() int {
 	return http.StatusOK
 }
 
+// TestStatusWithMockedServices validates the HandleStatus endpoint under normal operation.
+// It injects mock implementations for webhook count and Firestore DB check,
+// and sets a fixed server start time to simulate uptime.
 func TestStatusWithMockedServices(t *testing.T) {
 	// Set a static start time for uptime testing
 	start := time.Now().Add(-time.Hour) // simulate 1 hour uptime
@@ -72,6 +77,8 @@ func TestStatusWithMockedServices(t *testing.T) {
 	}
 }
 
+// TestStatusInvalidMethod ensures the HandleStatus endpoint correctly rejects unsupported HTTP methods.
+// It sends a POST request and expects HTTP 405 Method Not Allowed.
 func TestStatusInvalidMethod(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, consts.BaseStatusPath, nil)
 	w := httptest.NewRecorder()
