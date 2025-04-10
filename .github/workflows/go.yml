@@ -30,7 +30,5 @@ jobs:
        # sleep 10 # Give the emulator time to start
 
     - name: Test (excluding cache + dashboards_test.go)
-      env:
-        FIRESTORE_EMULATOR_HOST: localhost:8081
       run: |
         go list ./... | grep -v '/cache' | xargs go test -tags=ci -race -cover -v
