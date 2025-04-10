@@ -28,13 +28,13 @@ func TestPurgeCountryCache(t *testing.T) {
 
 	// Expired doc
 	_, err = firebase.GetClient().Collection(consts.CacheCollection).Doc(expiredID).Set(ctx, map[string]interface{}{
-		consts.FieldTimestamp: now.Add(-2 * time.Hour),
+		consts.FieldTimestamp: now.Add(-10 * time.Second),
 		consts.FieldData:      "old data",
 	})
 	assert.NoError(t, err)
 
 	// Purge with TTL = 1 hour
-	err = PurgeCountryCache(ctx, 1*time.Hour)
+	err = PurgeCountryCache(ctx, 5*time.Second)
 	assert.NoError(t, err)
 
 	// Check that fresh doc still exists
